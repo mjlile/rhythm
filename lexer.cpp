@@ -13,8 +13,8 @@ struct Source
     bool is_single_char_op(char c) { return single_char_ops.find(c) != single_char_ops.end(); }
     const string_view view() const { return string_view(source).substr(start, length); }
     void ignore() { ++start; }
-    char advance() { char c = peak(); ++length; return c; }
-    char peak() const {
+    char advance() { char c = peek(); ++length; return c; }
+    char peek() const {
         if (isAtEnd()) {
             return '\0';
         }
@@ -40,12 +40,12 @@ struct Source
         return advance_token(single_char_ops.find(view().at(0))->second);
     }
 
-    Token peak_token(Token::Type type) const {
+    Token peek_token(Token::Type type) const {
         return Token(type, view(), get_line_num());
     }
 
     Token advance_token(Token::Type type) {
-        Token tok = peak_token(type);
+        Token tok = peek_token(type);
         // TODO: += length + 1 ?
         start += length;
         // TODO: length = 1 ?
@@ -98,20 +98,15 @@ private:
         };
 };
 
-ostream& operator<< (ostream& os, const Token& obj) {
-    os << obj.get_lexeme() << " (" << (int)obj.get_type() << ") at line " << obj.get_line();
-    return os;
-}
-
 Token get_number(Source& source) {
-    while (isdigit(source.peak())) {
+    while (isdigit(source.peek())) {
         source.advance();
     }
     return source.advance_token(Token::Type::Number);
 }
 
 Token get_string(Source& source) {
-    while (source.peak() != '\"') {
+    while (source.peek() != '\"') {
         source.advance();
     }
     // consume closing quote
@@ -120,7 +115,7 @@ Token get_string(Source& source) {
 }
 
 Token get_id_or_keyword(Source& source) {
-    while (isalnum(source.peak()) || source.peak() == '_') {
+    while (isalnum(source.peek()) || source.peek() == '_') {
         source.advance();
     }
     return source.advance_keyword_id_token();
@@ -129,17 +124,21 @@ Token get_id_or_keyword(Source& source) {
 
 Token get_symbol_token(char c, Source& source) {
     // multi char symbols
-    if (c == '<' && source.peak() == '-') {
+    if (c == '<' && source.peek() == '-') {
         source.advance();
         return source.advance_token(Token::Type::Assign);
     }
-    if (c == '<' && source.peak() == '=') {
+    if (c == '<' && source.peek() == '=') {
         source.advance();
         return source.advance_token(Token::Type::LessEqual);
     }
-    if (c == '>' && source.peak() == '=') {
+    if (c == '>' && source.peek() == '=') {
         source.advance();
         return source.advance_token(Token::Type::GreaterEqual);
+    }
+    if (c == '!' && source.peek() == '=') {
+        source.advance();
+        return source.advance_token(Token::Type::NotEqual);
     }
 
     // single character symbols
@@ -175,8 +174,8 @@ vector<Token> lex(string source_content) {
     Source source(source_content);
 
     while (!source.isAtEnd()) {
-        while (isspace(source.peak()) && !source.isAtEnd()) {
-            if (source.peak() == '\n') {
+        while (isspace(source.peek()) && !source.isAtEnd()) {
+            if (source.peek() == '\n') {
                 source.new_line();
             }
             source.ignore();
