@@ -1,6 +1,1 @@
-let x : int = 1
-x <- 2
-let yasdsa : str = "2"
-if x = parseInt(yasdsa)
-    ++x
-end
+1 + -1 * 2 / not (1 - 67)

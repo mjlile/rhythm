@@ -1,7 +1,9 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <utility>
 #include "lexer.h"
+#include "parser.h"
 
 using namespace std;
 
@@ -12,9 +14,13 @@ void compile(string source_file_name) {
 
     vector<Token> tokens = lex(source_content);
 
-    for(auto token : tokens) {
+    for (auto token : tokens) {
         cout << token << endl;
     }
+    cout << endl;
+
+    auto expr = parse(tokens);
+    cout << *expr;
 }
 
 
