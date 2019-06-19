@@ -23,6 +23,9 @@ void compile(string source_file_name) {
     for (const auto& stmt : statements) {
         cout << stmt << endl;
     }
+    for (const auto& stmt : statements) {
+        stmt.interpret();
+    }
 }
 
 
