@@ -19,8 +19,10 @@ void compile(string source_file_name) {
     }
     cout << endl;
 
-    auto expr = parse(tokens);
-    cout << *expr;
+    vector<Stmt> statements = parse(tokens);
+    for (const auto& stmt : statements) {
+        cout << stmt << endl;
+    }
 }
 
 

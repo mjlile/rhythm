@@ -8,7 +8,7 @@ struct Token {
     enum class Type {
         Unknown,
         // Literals
-        Identifier, String, Number,
+        Identifier, String, Integer, Float,
         // Symbols
         LeftParen, RightParen, LeftBrace, RightBrace,
         LeftBracket, RightBracket,
@@ -16,7 +16,9 @@ struct Token {
         Equal, NotEqual, Greater, GreaterEqual, Less, LessEqual, Assign,
         // Keywords
         Not, And, Or, True, False, Fun, While, For, If,
-        Return, End, Let
+        Return, End, Let, Print,
+        // Other
+        Newline
     };
     Token() : type(Type::Unknown), lexeme(""), line(-1) {}
     Token(Type type, const std::string_view lexeme, int line)
