@@ -73,7 +73,8 @@ private:
             {"if",     Token::Type::If},
             {"return", Token::Type::Return},
             {"end",    Token::Type::End},
-            {"let",    Token::Type::Let}
+            {"let",    Token::Type::Let},
+            {"print",  Token::Type::Print}
         };
 
     const map<char, Token::Type, less<> > single_char_ops = 
@@ -102,7 +103,20 @@ Token get_number(Source& source) {
     while (isdigit(source.peek())) {
         source.advance();
     }
-    return source.advance_token(Token::Type::Number);
+    
+    // no decimal point -> integer
+    if(source.peek() != '.') {
+        return source.advance_token(Token::Type::Integer);
+    }
+    
+    // TODO: handle point with no trailing digits?
+    source.advance();
+
+    while (isdigit(source.peek())) {
+        source.advance();
+    }
+
+    return source.advance_token(Token::Type::Float);
 }
 
 Token get_string(Source& source) {
@@ -146,6 +160,13 @@ Token get_symbol_token(char c, Source& source) {
         return source.advance_single_char_token();
     }
 
+
+    if (c == '\n') {
+        auto tok = source.advance_token(Token::Type::Newline);
+        source.new_line();
+        return tok;
+    }
+
     // no match found
     return source.advance_token(Token::Type::Unknown);
 }
@@ -174,10 +195,7 @@ vector<Token> lex(string source_content) {
     Source source(source_content);
 
     while (!source.isAtEnd()) {
-        while (isspace(source.peek()) && !source.isAtEnd()) {
-            if (source.peek() == '\n') {
-                source.new_line();
-            }
+        while (!source.isAtEnd() && (isspace(source.peek()) && source.peek() != '\n')) {
             source.ignore();
         }
         tokens.push_back(get_token(source));

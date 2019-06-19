@@ -9,6 +9,11 @@ std::ostream& operator<< (std::ostream& os, const Expr& obj) {
     return os;
 }
 
+std::ostream& operator<< (std::ostream& os, const Stmt& obj) {
+    obj.expr->print(os);
+    return os;
+}
+
 struct TokenStream {
     TokenStream(const vector<Token>& tokens)
         : tokens(tokens), index(0) {}
@@ -66,7 +71,7 @@ unique_ptr<Expr> expression(TokenStream& tstream);
 
 
 unique_ptr<Expr> primary(TokenStream& tstream) {
-    if (match({TT::Number, TT::String, TT::False, TT::True}, tstream)) {
+    if (match({TT::Integer, TT::Float, TT::String, TT::False, TT::True}, tstream)) {
         return make_unique<Expr>(Expr::Type::Literal, tstream.previous());
     }
 
@@ -158,7 +163,6 @@ unique_ptr<Expr> equality(TokenStream& tstream) {
         new_expr->addChild(move(right));
         expr = move(new_expr);
     }
-
     return expr;
 }
 
@@ -166,8 +170,34 @@ unique_ptr<Expr> expression(TokenStream& tstream) {
     return equality(tstream);
 }
 
+Stmt expression_statement(TokenStream& tstream) {
+    auto expr = expression(tstream);
+    tstream.consume(TT::Newline, "Expected line break after statement");
+    return Stmt(Stmt::Type::Expression, move(expr));
+}
+
+Stmt print_statement(TokenStream& tstream) {
+    auto expr = expression(tstream);
+    tstream.consume(TT::Newline, "Expected line break after statement");
+    return Stmt(Stmt::Type::Print, move(expr));
+}
+
+Stmt statement(TokenStream& tstream) {
+    if (match(TT::Print, tstream)) {
+        return print_statement(tstream);
+    }
+
+    return expression_statement(tstream);
+}
+
 // takes in rvalue ref to tokens, consume vector
-unique_ptr<Expr> parse(vector<Token> tokens) {
+vector<Stmt> parse(vector<Token> tokens) {
     TokenStream tstream(move(tokens));
-    return expression(tstream);
+    vector<Stmt> statements;
+
+    while (!tstream.isAtEnd()) {
+        statements.push_back(statement(tstream));
+    }
+
+    return statements;
 }

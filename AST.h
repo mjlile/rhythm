@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <utility>
+#include <variant>
 #include "token.h"
 
 struct Expr {
@@ -35,6 +36,7 @@ struct Expr {
         }
         os << ")";
     }
+
 private:
     std::vector<std::unique_ptr<Expr>> children;
     Token val;
@@ -44,3 +46,20 @@ private:
 
 
 std::ostream& operator<< (std::ostream& os, const Expr& obj);
+
+
+struct Stmt {
+    enum class Type {
+        Expression,
+        Print
+    };
+    Stmt(Type type, std::unique_ptr<Expr>&& expr)
+            : type(type), expr(move(expr)) {}
+
+    std::unique_ptr<Expr> expr;
+    Type type;
+};
+
+
+
+std::ostream& operator<< (std::ostream& os, const Stmt& obj);

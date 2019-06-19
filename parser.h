@@ -1,4 +1,4 @@
 #include "AST.h"
 #include <vector>
 
-std::unique_ptr<Expr> parse(std::vector<Token> tokens);
+std::vector<Stmt> parse(std::vector<Token> tokens);
