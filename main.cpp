@@ -3,31 +3,31 @@
 #include <vector>
 #include <utility>
 #include "lexer.h"
-#include "parser.h"
+//#include "parser.h"
 
 using namespace std;
 
 void compile(string source_file_name) {
     ifstream source_stream(source_file_name);
-    string source_content( (std::istreambuf_iterator<char>(source_stream) ),
-                           (std::istreambuf_iterator<char>()    ) );
-
-    vector<Token> tokens = lex(source_content);
+    auto stream_begin = std::istreambuf_iterator<char>(source_stream);
+    auto stream_end = std::istreambuf_iterator<char>();
+    Lexer lexer(stream_begin, stream_end); 
+    // example: store tokens in vector
+    vector<Token> tokens(lexer.begin(), lexer.end());
 
     for (auto token : tokens) {
         cout << token << endl;
     }
     cout << endl;
+    /*
+    Parser parser(lexer.begin(), lexer.end());
+    vector<Statement> statements(parser.begin(), parser.end());
 
-    vector<Stmt> statements = parse(tokens);
     for (const auto& stmt : statements) {
         cout << stmt << endl;
     }
-    for (const auto& stmt : statements) {
-        stmt.interpret();
-    }
+    */
 }
-
 
 int main(int argc, char* argv[]) {
     if (argc == 2) {
@@ -36,7 +36,6 @@ int main(int argc, char* argv[]) {
     else {
         cout << "Usage: rhythmc [source]" << endl;
     }
-
 }
 
 
