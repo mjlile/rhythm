@@ -1,13 +1,14 @@
 #pragma once
 
-#include <string_view>
+#include <string>
+#include <variant>
 #include <iostream>
 
 
 struct Token {
     enum class Type {
         Unknown,
-        // Literals
+        // Operands
         Identifier, String, Integer, Float,
         // Symbols
         LeftParen, RightParen, LeftBrace, RightBrace,
@@ -20,18 +21,24 @@ struct Token {
         // Other
         Newline
     };
-    Token() : type(Type::Unknown), lexeme(""), line(-1) {}
-    Token(Type type, const std::string_view lexeme, int line)
-        : type(type), lexeme(lexeme), line(line) {}
-    Token(Type type) : type(type) {}
+    //using LiteralVariant = std::variant<std::monostate, int, double, std::string>;
 
-    std::string_view get_lexeme() const { return lexeme; }
+    Token() : type(Type::Unknown), line(-1) {}
+    // constructs a token from a lexeme, inferring the type
+    Token(const std::string_view lexeme, Type type, int line)
+        : Token(type, line) { value = lexeme; }
+    // constructs a token with a given type
+    Token(Type type, int line) : type(type), line(line) {}
+
     Type get_type() const { return type; }
     int get_line() const { return line; }
 
 private:
     Type type;
-    std::string_view lexeme;
+    // identifier name or literal value (if applicable)
+    std::string value;
+    // line number in source file for debug info
+    // TODO: column position and source file name too?
     int line;
 };
 
