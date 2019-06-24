@@ -85,7 +85,8 @@ const unordered_map<TT, string> token_print_map =
         {TT::GreaterEqual, ">="},
         {TT::NotEqual, "!="},
         {TT::Assign, "<-"},
-        {TT::Newline, "\\n"}
+        {TT::Newline, "\\n"},
+        {TT::EndOfFile, "EOF"}
     };
 
 ostream& operator<< (ostream& os, const Token& obj) {
