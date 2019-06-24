@@ -89,13 +89,17 @@ const unordered_map<TT, string> token_print_map =
     };
 
 ostream& operator<< (ostream& os, const Token& obj) {
+    if (!obj.value.empty()) {
+        os << obj.value;
+        return os;
+    }
     auto print_it = token_print_map.find(obj.get_type());
     if (print_it != token_print_map.end()) {
         os << print_it->second;
     }
     else {
         os << "(token printing not implemented: "
-           << (int)obj.get_type() << "))";
+           << (int)obj.get_type() << ")";
     }
 
     return os;

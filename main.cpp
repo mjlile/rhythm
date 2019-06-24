@@ -15,8 +15,9 @@ void compile(string source_file_name) {
     // example: store tokens in vector
     vector<Token> tokens(lexer.begin(), lexer.end());
 
+    cout << "all tokens" << endl;
     for (auto token : tokens) {
-        cout << token << endl;
+        cout << token << ' ';
     }
     cout << endl;
     /*
