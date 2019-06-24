@@ -1,6 +1,7 @@
 #pragma once
 
 #include "token.h"
+#include "gen_iterator.h"
 #include <map>
 #include <string>
 #include <vector>
@@ -19,77 +20,17 @@ struct Lexer {
     // get the current Token and advance the state of the lexer
     Token get();
     // peek at the current Token without advancing
-    Token peek();
+    Token peek() const;
     
-
-    // token input iterator / token generator
-    struct iterator {
-        using iterator_category = std::input_iterator_tag;
-        using difference_type = void;
-        using size_type = size_t;
-        using value_type = Token;
-        // reference/pointer not actually a reference/pointer,
-        // since Tokens are not stored in Lexer
-        using pointer = Token;
-        using reference = Token;
-
-        // construct begin itetator
-        iterator(Lexer& lexer) : lexer_ptr(&lexer) {}
-        // default constructor creates end iterator
-        iterator() : lexer_ptr(nullptr) {}
-        iterator(const iterator& other) = default;
-        iterator& operator=(const iterator& other) = default;
-
-        // friend functions defined inside according to Dan Saks'
-        // "Making New Friends" idiom
-        friend void swap(iterator& lhs, iterator& rhs) {
-            using std::swap;
-            swap(lhs.lexer_ptr, rhs.lexer_ptr);
-        }
-        friend bool operator==(const iterator& lhs, const iterator& rhs) {
-            return lhs.lexer_ptr == rhs.lexer_ptr;
-        }
-        friend bool operator!=(const iterator& lhs, const iterator& rhs) {
-            return !(lhs == rhs);
-        }
-
-        // input iterator operations
-        iterator& operator++() {
-            lexer_ptr->get();
-
-            if (lexer_ptr->isAtEnd()) {
-                *this = lexer_ptr->end();
-            }
-            return *this;
-        }
-
-        iterator operator++(int) {
-            iterator prev = *this;
-            ++(*this);
-            return prev;
-        }
-
-        // cannot write to an input iterator, so it doesn't yield a reference
-        value_type operator*() const {
-            return lexer_ptr->peek();
-        }
-
-        // not a real pointer
-        pointer operator->() const {
-            return lexer_ptr->peek();
-        }
-
-    private:
-        // non-owning pointer
-        Lexer* lexer_ptr;
-    };
-
-
+    // iterator info
+    using value_type = Token;
+    using iterator = gen_iterator<Lexer>;
+    friend iterator;
     iterator begin() { return iterator(*this); }
     iterator end() { return iterator(); }
 
-    bool isAtEnd() {
-        return chars_begin == chars_end;
+    bool at_end() {
+        return curr_token.get_type() == Token::Type::EndOfFile;    
     }
 
 
@@ -175,16 +116,18 @@ bool ignorable(char c) {
 template<typename InputIterator>
 Token Lexer<InputIterator>::get() {
     if (chars_begin == chars_end) {
-        curr_token = Token();
+        curr_token = Token(Token::Type::EndOfFile, line_num);
         return curr_token;
     }
     while (ignorable(*chars_begin)) { ++chars_begin; }
     char c = *chars_begin++;
     if (c == '\n') {
+        // new line
         ++line_num;
         curr_token = Token(Token::Type::Newline, line_num - 1);
     }
     else if (std::isdigit(c)) {
+        // numeric literal
         std::string lexeme(1, c);
         while (std::isdigit(*chars_begin)) {
             // TODO: more efficient? stream? int (num = num * 10 + ctoi(c))and store variant?
@@ -203,6 +146,7 @@ Token Lexer<InputIterator>::get() {
         }
     }
     else if (c == '"') {
+        // string literal
         std::string lexeme;
         while (*chars_begin != '"') { 
             lexeme.push_back(*chars_begin++);
@@ -210,6 +154,7 @@ Token Lexer<InputIterator>::get() {
         curr_token = Token(std::move(lexeme), Token::Type::String, line_num);
     }
     else if (std::isalpha(c)) {
+        // identifier or keyword
         std::string lexeme(1, c);
         while (std::isalnum(*chars_begin) || *chars_begin == '_') {
             lexeme.push_back(*chars_begin++);
@@ -246,6 +191,6 @@ Token Lexer<InputIterator>::get() {
 
 
 template<typename InputIterator>
-Token Lexer<InputIterator>::peek() {
+Token Lexer<InputIterator>::peek() const {
     return curr_token;
 }

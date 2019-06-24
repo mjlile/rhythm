@@ -19,7 +19,8 @@ struct Token {
         Not, And, Or, True, False, Fun, While, For, If,
         Return, End, Let, Print,
         // Other
-        Newline
+        Newline,
+        EndOfFile
     };
     //using LiteralVariant = std::variant<std::monostate, int, double, std::string>;
 
