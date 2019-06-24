@@ -12,18 +12,10 @@
 // Generates tokens
 template<typename InputIterator>
 struct Lexer {
-    using iterator_category = std::input_iterator_tag;
-    using difference_type = ptrdiff_t;
-    using size_type = size_t;
-    using value_type = Token;
-    // reference/pointer not actually a reference/pointer,
-    // since Tokens are not stored in Lexer
-    using pointer = Token;
-    using reference = Token;
-
-
     Lexer(InputIterator chars_begin, InputIterator chars_end)
-        : chars_begin(chars_begin), chars_end(chars_end), line_num(0) {}
+            : chars_begin(chars_begin), chars_end(chars_end), line_num(0) {
+        curr_token = get();
+    }
     // get the current Token and advance the state of the lexer
     Token get();
     // peek at the current Token without advancing
@@ -32,26 +24,42 @@ struct Lexer {
 
     // token input iterator / token generator
     struct iterator {
+        using iterator_category = std::input_iterator_tag;
+        using difference_type = void;
+        using size_type = size_t;
+        using value_type = Token;
+        // reference/pointer not actually a reference/pointer,
+        // since Tokens are not stored in Lexer
+        using pointer = Token;
+        using reference = Token;
+
         // construct begin itetator
         iterator(Lexer& lexer) : lexer_ptr(&lexer) {}
         // default constructor creates end iterator
         iterator() : lexer_ptr(nullptr) {}
-        iterator(const iterator& other) : lexer_ptr(other.lexer_ptr) {}
+        iterator(const iterator& other) = default;
+        iterator& operator=(const iterator& other) = default;
 
+        // friend functions defined inside according to Dan Saks'
+        // "Making New Friends" idiom
+        friend void swap(iterator& lhs, iterator& rhs) {
+            using std::swap;
+            swap(lhs.lexer_ptr, rhs.lexer_ptr);
+        }
+        friend bool operator==(const iterator& lhs, const iterator& rhs) {
+            return lhs.lexer_ptr == rhs.lexer_ptr;
+        }
+        friend bool operator!=(const iterator& lhs, const iterator& rhs) {
+            return !(lhs == rhs);
+        }
 
-        iterator& operator=(iterator other) {
-            swap(other);
-            return *this;
-        }
-        bool operator==(const iterator& other) const {
-            return lexer_ptr == other.lexer_ptr;
-        }
-        bool operator!=(const iterator& other) const {
-            return !(*this == other);
-        }
-
+        // input iterator operations
         iterator& operator++() {
             lexer_ptr->get();
+
+            if (lexer_ptr->isAtEnd()) {
+                *this = lexer_ptr->end();
+            }
             return *this;
         }
 
@@ -61,29 +69,28 @@ struct Lexer {
             return prev;
         }
 
-        // not a real reference
-        const reference operator*() {
+        // cannot write to an input iterator, so it doesn't yield a reference
+        value_type operator*() const {
             return lexer_ptr->peek();
         }
 
-        const pointer operator->() {
+        // not a real pointer
+        pointer operator->() const {
             return lexer_ptr->peek();
         }
 
     private:
-        // for copy-swap idiom
-        void swap(iterator& it) {
-            std::swap(lexer_ptr, it.lexer_ptr);
-        }
         // non-owning pointer
         Lexer* lexer_ptr;
     };
 
 
-    // TODO: remove? is it misleading to have begin() when 
-    //       it can only return the current state, not the original state?
     iterator begin() { return iterator(*this); }
     iterator end() { return iterator(); }
+
+    bool isAtEnd() {
+        return chars_begin == chars_end;
+    }
 
 
 private:
@@ -98,7 +105,6 @@ private:
     // returns the type if it's a valid symbol, otherwise unknown
     Token::Type get_symbol_type(const std::string& lexeme);
 };
-
 
 
 // helper functions
@@ -162,7 +168,9 @@ Token::Type Lexer<InputIterator>::get_symbol_type(const std::string& lexeme) {
     return Token::Type::Unknown;
 }
 
-
+bool ignorable(char c) {
+    return std::isspace(c) && c != '\n';
+}
 // TODO: and error handling for end of stream before finishing a token
 template<typename InputIterator>
 Token Lexer<InputIterator>::get() {
@@ -170,14 +178,14 @@ Token Lexer<InputIterator>::get() {
         curr_token = Token();
         return curr_token;
     }
-
+    while (ignorable(*chars_begin)) { ++chars_begin; }
     char c = *chars_begin++;
     if (c == '\n') {
         ++line_num;
         curr_token = Token(Token::Type::Newline, line_num - 1);
     }
     else if (std::isdigit(c)) {
-        std::string lexeme;
+        std::string lexeme(1, c);
         while (std::isdigit(*chars_begin)) {
             // TODO: more efficient? stream? int (num = num * 10 + ctoi(c))and store variant?
             lexeme.push_back(*chars_begin++);
@@ -186,7 +194,7 @@ Token Lexer<InputIterator>::get() {
             curr_token = Token(std::move(lexeme), Token::Type::Integer, line_num);
         }
         else {
-            ++chars_begin;
+            lexeme.push_back(*chars_begin++);
             while (std::isdigit(*chars_begin)) {
                 // TODO: more efficient? stream? int (num = num * 10 + ctoi(c))and store variant?
                 lexeme.push_back(*chars_begin++);
@@ -202,11 +210,11 @@ Token Lexer<InputIterator>::get() {
         curr_token = Token(std::move(lexeme), Token::Type::String, line_num);
     }
     else if (std::isalpha(c)) {
-        std::string lexeme;
+        std::string lexeme(1, c);
         while (std::isalnum(*chars_begin) || *chars_begin == '_') {
             lexeme.push_back(*chars_begin++);
         }
-        auto type = Lexer::get_keyword_type(lexeme);
+        auto type = Lexer<InputIterator>::get_keyword_type(lexeme);
         if (type == Token::Type::Identifier) {
             curr_token = Token(std::move(lexeme), type, line_num);
         }
@@ -216,14 +224,14 @@ Token Lexer<InputIterator>::get() {
     }
     else {
         // symbolic token
-        std::string lexeme;
-        lexeme += c;
-        auto one_char_type = Lexer::get_symbol_token(lexeme);
+        std::string lexeme(1, c);
+        auto one_char_type = Lexer::get_symbol_type(lexeme);
         lexeme += *chars_begin;
-        auto two_char_type = Lexer::get_symbol_token(lexeme);
+        auto two_char_type = Lexer::get_symbol_type(lexeme);
 
         // check if it's a two char symbol, otherwise one char symbol
         if (two_char_type != Token::Type::Unknown) {
+            ++chars_begin;
             curr_token = Token(two_char_type, line_num);
         }
         else {

@@ -25,13 +25,14 @@ struct Token {
 
     Token() : type(Type::Unknown), line(-1) {}
     // constructs a token from a lexeme, inferring the type
-    Token(const std::string_view lexeme, Type type, int line)
+    Token(std::string&& lexeme, Type type, int line)
         : Token(type, line) { value = lexeme; }
     // constructs a token with a given type
     Token(Type type, int line) : type(type), line(line) {}
 
     Type get_type() const { return type; }
     int get_line() const { return line; }
+    friend std::ostream& operator<< (std::ostream& os, const Token& obj);
 
 private:
     Type type;
