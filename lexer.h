@@ -62,6 +62,7 @@ Token::Type Lexer<InputIterator>::get_keyword_type(const std::string& lexeme) {
         {"while",  Token::Type::While},
         {"for",    Token::Type::For},
         {"if",     Token::Type::If},
+        {"then",   Token::Type::Then},
         {"return", Token::Type::Return},
         {"end",    Token::Type::End},
         {"let",    Token::Type::Let},
@@ -147,10 +148,11 @@ Token Lexer<InputIterator>::get() {
     }
     else if (c == '"') {
         // string literal
-        std::string lexeme;
+        std::string lexeme(1, c);
         while (*chars_begin != '"') { 
             lexeme.push_back(*chars_begin++);
         }
+        lexeme.push_back(*chars_begin++);
         curr_token = Token(std::move(lexeme), Token::Type::String, line_num);
     }
     else if (std::isalpha(c)) {
