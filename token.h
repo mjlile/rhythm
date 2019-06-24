@@ -16,7 +16,7 @@ struct Token {
         Comma, Dot, Colon, Semicolon, Minus, Plus, Slash, Star, 
         Equal, NotEqual, Greater, GreaterEqual, Less, LessEqual, Assign,
         // Keywords
-        Not, And, Or, True, False, Fun, While, For, If,
+        Not, And, Or, True, False, Fun, While, For, If, Then,
         Return, End, Let, Print,
         // Other
         Newline,

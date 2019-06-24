@@ -60,6 +60,7 @@ const unordered_map<TT, string> token_print_map =
         {TT::While, "while"},
         {TT::For, "for"},
         {TT::If, "if"},
+        {TT::Then, "then"},
         {TT::Return, "return"},
         {TT::End, "end"},
         {TT::Let, "let"},
