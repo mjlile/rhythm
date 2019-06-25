@@ -1,15 +1,16 @@
+#pragma once
 // iterator class template for a generator (e.g. lexer, parser)
 template<typename Generator>
 // Generator must have peek, get, and at_end functions
 // and must have value_type typedef
 struct gen_iterator {
     using iterator_category = std::input_iterator_tag;
-    using difference_type = void;
+    using difference_type = ptrdiff_t;
     using size_type = size_t;
     using value_type = typename Generator::value_type;
     // reference/pointer not actually a reference/pointer, doesn't store values
-    using pointer = typename Generator::value_type;
-    using reference = typename Generator::value_type;
+    using pointer = typename Generator::value_type*;
+    using reference = typename Generator::value_type&;
 
     // construct begin itetator
     gen_iterator(Generator& gen) : gen_ptr(&gen) {}
@@ -33,7 +34,7 @@ struct gen_iterator {
 
     // input iterator operations
     gen_iterator& operator++() {
-        gen_ptr->get();
+        gen_ptr->next();
 
         if (gen_ptr->at_end()) {
             *this = gen_ptr->end();
@@ -47,12 +48,11 @@ struct gen_iterator {
         return prev;
     }
 
-    // cannot write to an input iterator, so it doesn't yield a reference
+    // cannot write to an input iterator, so it doesn't yield a reference (TODO)
     value_type operator*() const {
         return gen_ptr->peek();
     }
 
-    // not a real pointer
     pointer operator->() const {
         return gen_ptr->peek();
     }

@@ -15,12 +15,12 @@ template<typename InputIterator>
 struct Lexer {
     Lexer(InputIterator chars_begin, InputIterator chars_end)
             : chars_begin(chars_begin), chars_end(chars_end), line_num(0) {
-        curr_token = get();
+        next();
     }
     // get the current Token and advance the state of the lexer
-    Token get();
+    void next();
     // peek at the current Token without advancing
-    Token peek() const;
+    const Token& peek() const;
     
     // iterator info
     using value_type = Token;
@@ -115,13 +115,19 @@ bool ignorable(char c) {
 }
 // TODO: and error handling for end of stream before finishing a token
 template<typename InputIterator>
-Token Lexer<InputIterator>::get() {
+void Lexer<InputIterator>::next() {
+    // check for end of stream
     if (chars_begin == chars_end) {
         curr_token = Token(Token::Type::EndOfFile, line_num);
-        return curr_token;
+        return;
     }
-    while (ignorable(*chars_begin)) { ++chars_begin; }
+
+    while (chars_begin != chars_end && ignorable(*chars_begin)) {
+        ++chars_begin;
+    }
+
     char c = *chars_begin++;
+
     if (c == '\n') {
         // new line
         ++line_num;
@@ -130,16 +136,17 @@ Token Lexer<InputIterator>::get() {
     else if (std::isdigit(c)) {
         // numeric literal
         std::string lexeme(1, c);
-        while (std::isdigit(*chars_begin)) {
+        while (chars_begin != chars_end && std::isdigit(*chars_begin)) {
             // TODO: more efficient? stream? int (num = num * 10 + ctoi(c))and store variant?
             lexeme.push_back(*chars_begin++);
         }
-        if (*chars_begin != '.') {
+        
+        if (chars_begin == chars_end || *chars_begin != '.') {
             curr_token = Token(std::move(lexeme), Token::Type::Integer, line_num);
         }
         else {
             lexeme.push_back(*chars_begin++);
-            while (std::isdigit(*chars_begin)) {
+            while (chars_begin != chars_end && std::isdigit(*chars_begin)) {
                 // TODO: more efficient? stream? int (num = num * 10 + ctoi(c))and store variant?
                 lexeme.push_back(*chars_begin++);
             }
@@ -149,8 +156,13 @@ Token Lexer<InputIterator>::get() {
     else if (c == '"') {
         // string literal
         std::string lexeme(1, c);
-        while (*chars_begin != '"') { 
+        while (chars_begin != chars_end && *chars_begin != '"') { 
             lexeme.push_back(*chars_begin++);
+        }
+        if (chars_begin == chars_end) {
+            // error - expected closing quote
+            curr_token = Token(std::move(lexeme), Token::Type::Unknown, line_num);
+            return;
         }
         lexeme.push_back(*chars_begin++);
         curr_token = Token(std::move(lexeme), Token::Type::String, line_num);
@@ -158,7 +170,7 @@ Token Lexer<InputIterator>::get() {
     else if (std::isalpha(c)) {
         // identifier or keyword
         std::string lexeme(1, c);
-        while (std::isalnum(*chars_begin) || *chars_begin == '_') {
+        while (chars_begin != chars_end && (std::isalnum(*chars_begin) || *chars_begin == '_')) {
             lexeme.push_back(*chars_begin++);
         }
         auto type = Lexer<InputIterator>::get_keyword_type(lexeme);
@@ -173,26 +185,30 @@ Token Lexer<InputIterator>::get() {
         // symbolic token
         std::string lexeme(1, c);
         auto one_char_type = Lexer::get_symbol_type(lexeme);
-        lexeme += *chars_begin;
-        auto two_char_type = Lexer::get_symbol_type(lexeme);
 
-        // check if it's a two char symbol, otherwise one char symbol
-        if (two_char_type != Token::Type::Unknown) {
-            ++chars_begin;
-            curr_token = Token(two_char_type, line_num);
+        // check for two char symbol (maximal-munch)
+        if (chars_begin != chars_end) {
+            lexeme.push_back(*chars_begin);
+            auto two_char_type = Lexer::get_symbol_type(lexeme);
+            if (two_char_type != Token::Type::Unknown) {
+                ++chars_begin;
+                curr_token = Token(two_char_type, line_num);
+                return;
+            }
+            lexeme.pop_back();
+        }
+
+        if (one_char_type == Token::Type::Unknown) {
+            curr_token = Token(std::move(lexeme), Token::Type::Unknown, line_num);
         }
         else {
-            // TODO: returns unknown if not a symbol
-            // should it throw instead? store lexeme to show later?
             curr_token = Token(one_char_type, line_num);
         }
     }
-
-    return curr_token;
 }
 
 
 template<typename InputIterator>
-Token Lexer<InputIterator>::peek() const {
+const Token& Lexer<InputIterator>::peek() const {
     return curr_token;
 }
