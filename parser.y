@@ -14,11 +14,11 @@
 
 %token <token> TOKEN_EOL TOKEN_EQ TOKEN_NE TOKEN_LT TOKEN_LE TOKEN_GT
 %token <token> TOKEN_GE TOKEN_LPAREN TOKEN_RPAREN TOKEN_LBRACE TOKEN_RBRACE
-%token <token> TOKEN_LBRACK TOKEN_RBRACK TOKEN_ASSIGN TOKEN_DOT TOKEN_COMMA
+%token <token> TOKEN_LBRACK TOKEN_RBRACK TOKEN_LARROW TOKEN_RARROW TOKEN_DOT TOKEN_COMMA
 %token <token> TOKEN_BANG TOKEN_PLUS TOKEN_MINUS TOKEN_STAR TOKEN_SLASH
 /* keywords */
 %token <token> TOKEN_RETURN TOKEN_IF TOKEN_THEN TOKEN_WHILE TOKEN_DO TOKEN_END
-%token <token> TOKEN_AND TOKEN_OR
+%token <token> TOKEN_AND TOKEN_OR TOKEN_PROC
 
 
 /* Operator precedence for mathematical operators */
@@ -52,6 +52,7 @@ assignment      : type expression gets expression { std::cout << "assign" << std
 control         : return_stmt
                 | conditional
                 | while_stmt
+                | procedure
                 ;
 
 return_stmt     : return
@@ -62,6 +63,18 @@ conditional     : if expression then block end
                 ;
 
 while_stmt      : while expression do block end
+                ;
+
+procedure       : proc identifier group_begin maybe_params group_end to type block end
+                ;
+
+maybe_params    :
+                | parameters
+                ;
+
+parameters      : type identifier
+                | parameters comma type identifier
+                ;
 
 
 
@@ -124,10 +137,13 @@ group_end : TOKEN_RPAREN;
 
 type : TOKEN_TYPE;
 eol : TOKEN_EOL | eol TOKEN_EOL { std::cout << "eol" << std::endl; };
-gets : TOKEN_ASSIGN;
+gets : TOKEN_LARROW;
+to : TOKEN_RARROW;
 return : TOKEN_RETURN;
 if : TOKEN_IF;
 then : TOKEN_THEN;
 while : TOKEN_WHILE;
 do : TOKEN_DO;
-end : TOKEN_END
+proc : TOKEN_PROC;
+end : TOKEN_END;
+comma : TOKEN_COMMA;

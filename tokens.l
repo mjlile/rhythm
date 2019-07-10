@@ -34,6 +34,7 @@ extern "C" int yywrap() { }
 "then"                  return make_token(TOKEN_THEN);
 "while"                 return make_token(TOKEN_WHILE);
 "do"                    return make_token(TOKEN_DO);
+"pro"                   return make_token(TOKEN_PROC);
 "end"                   return make_token(TOKEN_END);
 "and"                   return make_token(TOKEN_AND);
 "or"                    return make_token(TOKEN_OR);
@@ -54,7 +55,8 @@ extern "C" int yywrap() { }
 "}"                     return make_token(TOKEN_RBRACE);
 "["                     return make_token(TOKEN_LBRACK);
 "]"                     return make_token(TOKEN_RBRACK);
-"<-"                    return make_token(TOKEN_ASSIGN);
+"<-"                    return make_token(TOKEN_LARROW);
+"->"                    return make_token(TOKEN_RARROW);
 "."                     return make_token(TOKEN_DOT);
 ","                     return make_token(TOKEN_COMMA);
 "!"                     return make_token(TOKEN_BANG);
