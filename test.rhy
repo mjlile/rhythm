@@ -1,11 +1,3 @@
-Int x <- abc + 1 - "asdf"
-Int x <- abc + 1 - "asdf"
-Int x <- abc + 1 - "asdf"
-
-if x = y then Str y <- "foo" end
-
-if y = "foo" then
-    if 7 = 7 then
-        Bool b <- true
-    end
+pro foo () -> Int
+    return 42
 end
