@@ -1,6 +1,7 @@
 %{
 #include <iostream>
 #include <memory>
+#include <cstring>
 #include "parser.hpp"
 
 bool savable_token(int t) {
@@ -8,14 +9,16 @@ bool savable_token(int t) {
         || t == TOKEN_REAL || t == TOKEN_STR;
 }
 
-std::string* get_string() {
-    // this hurts me
-    return new std::string(yytext, yyleng);
+char* alloc_cstring() {
+    // yacc/bison infrastructure requires raw dynamic memory
+    char* str = new char[yyleng];
+    strcpy(str, yytext);
+    return str;
 }
 
 int make_token(int t) {
     if (savable_token(t)) {
-        yylval.string = get_string();
+        yylval.string = alloc_cstring();
     }
     else {
         yylval.token = t;

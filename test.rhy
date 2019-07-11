@@ -1,3 +1,11 @@
-pro foo () -> Int
-    return 42
+Int c <- 2.43
+c <- "dsafds"
+if x + 1 < y then
+    if x + 1 < y then
+        if x + 1 < y then
+            "dsadsa"
+            435245
+            213.432432
+        end
+    end
 end
