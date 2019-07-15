@@ -16,7 +16,7 @@ struct ParseTree {
         Return, // [expression]
 
         Group, // expr
-        Token, // no children, token
+        Operator, // operand+
         Literal, // no children, value
         Identifier, // no children, value
         Type // no children, value
@@ -26,7 +26,7 @@ struct ParseTree {
     ParseTree(Type type, const std::string& value)
         : type(type), value(value), token(-1) {}
     ParseTree(int token)
-        : type(Type::Token), token(token) {}
+        : type(Type::Operator), token(token) {}
     
     void add_child(std::unique_ptr<ParseTree> child) {
         children.push_back(std::move(child));
