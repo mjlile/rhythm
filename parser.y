@@ -84,14 +84,15 @@ statement       : expression
 declaration     : TOKEN_TYPE TOKEN_IDENT
                     {
                         $$ = new ParseTree(PTT::Declaration);
-                        $$->make_child(PTT::Type, $1);
-                        $$->make_child(PTT::Identifier, $2);
+                        $$->make_child(PTT::Type, dyn_cstr_to_str($1));
+                        $$->make_child(PTT::Identifier, dyn_cstr_to_str($2));
+                        //add_symbol($1->get)
                     }
                 | TOKEN_TYPE TOKEN_IDENT TOKEN_LARROW expression
                     {
                         $$ = new ParseTree(PTT::Declaration);
-                        $$->make_child(PTT::Type, $1);
-                        $$->make_child(PTT::Identifier, $2);
+                        $$->make_child(PTT::Type, dyn_cstr_to_str($1));
+                        $$->make_child(PTT::Identifier, dyn_cstr_to_str($2));
                         $$->adopt_child($4);
                     }
                 ;
@@ -99,7 +100,7 @@ declaration     : TOKEN_TYPE TOKEN_IDENT
 assignment      : TOKEN_IDENT TOKEN_LARROW expression
                     {
                         $$ = new ParseTree(PTT::Assignment);
-                        $$->make_child(PTT::Identifier, $1);
+                        $$->make_child(PTT::Identifier, dyn_cstr_to_str($1));
                         $$->adopt_child($3);
                     }
                 ;
@@ -157,9 +158,8 @@ expression      : disjunction
 disjunction     : conjunction
                 | disjunction or conjunction
                     {
-                        $$ = new ParseTree(PTT::Expression);
+                        $$ = new ParseTree($2);
                         $$->adopt_child($1);
-                        $$->make_child($2);
                         $$->adopt_child($3);
                     }
                 ;
@@ -167,9 +167,8 @@ disjunction     : conjunction
 conjunction     : equality
                 | conjunction and equality
                     {
-                        $$ = new ParseTree(PTT::Expression);
+                        $$ = new ParseTree($2);
                         $$->adopt_child($1);
-                        $$->make_child($2);
                         $$->adopt_child($3);
                     }
                 ;
@@ -177,9 +176,8 @@ conjunction     : equality
 equality        : relational
                 | equality eq relational
                     {
-                        $$ = new ParseTree(PTT::Expression);
+                        $$ = new ParseTree($2);
                         $$->adopt_child($1);
-                        $$->make_child($2);
                         $$->adopt_child($3);
                     }
                 ;
@@ -187,9 +185,8 @@ equality        : relational
 relational      : additive
                 | relational relate additive
                     {
-                        $$ = new ParseTree(PTT::Expression);
+                        $$ = new ParseTree($2);
                         $$->adopt_child($1);
-                        $$->make_child($2);
                         $$->adopt_child($3);
                     }
                 ;
@@ -197,9 +194,8 @@ relational      : additive
 additive        : multiplicative
                 | additive add multiplicative
                     {
-                        $$ = new ParseTree(PTT::Expression);
+                        $$ = new ParseTree($2);
                         $$->adopt_child($1);
-                        $$->make_child($2);
                         $$->adopt_child($3);
                     }
                 ;
@@ -207,9 +203,8 @@ additive        : multiplicative
 multiplicative  : prefix
                 | multiplicative multiply prefix
                     {
-                        $$ = new ParseTree(PTT::Expression);
+                        $$ = new ParseTree($2);
                         $$->adopt_child($1);
-                        $$->make_child($2);
                         $$->adopt_child($3);
                     }
                 ;
@@ -217,8 +212,7 @@ multiplicative  : prefix
 prefix          : postfix
                 | pre prefix
                     {
-                        $$ = new ParseTree(PTT::Expression);
-                        $$->make_child($1);
+                        $$ = new ParseTree($1);
                         $$->adopt_child($2);
                     }
                 ;
@@ -226,13 +220,12 @@ prefix          : postfix
 postfix         : primary
                 | postfix post
                     {
-                        $$ = new ParseTree(PTT::Expression);
+                        $$ = new ParseTree($2);
                         $$->adopt_child($1);
-                        $$->make_child($2);
                     }
                 ;
 
-primary         : literal { std::cout << "literal: " << $1 << std::endl; $$ = new ParseTree(PTT::Literal, dyn_cstr_to_str($1)); }
+primary         : literal { $$ = new ParseTree(PTT::Literal, dyn_cstr_to_str($1)); }
                 | TOKEN_IDENT { $$ = new ParseTree(PTT::Identifier, dyn_cstr_to_str($1)); }
                 | TOKEN_LPAREN expression TOKEN_RPAREN
                     {
@@ -254,4 +247,4 @@ post : TOKEN_DOT;
 
 
 literal : TOKEN_INT | TOKEN_REAL | TOKEN_STR;
-eol : TOKEN_EOL | eol TOKEN_EOL { std::cout << "eol" << std::endl; };
+eol : TOKEN_EOL | eol TOKEN_EOL;
