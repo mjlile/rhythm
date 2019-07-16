@@ -29,7 +29,7 @@
 %token <token> TOKEN_BANG TOKEN_PLUS TOKEN_MINUS TOKEN_STAR TOKEN_SLASH
 /* keywords */
 %token <token> TOKEN_RETURN TOKEN_IF TOKEN_THEN TOKEN_WHILE TOKEN_DO TOKEN_END
-%token <token> TOKEN_AND TOKEN_OR TOKEN_PROC
+%token <token> TOKEN_AND TOKEN_OR TOKEN_PROC TOKEN_IMPORT
 
 %type <string> literal 
 %type <token> or and eq relate add multiply pre post
@@ -38,7 +38,7 @@
 %type <parse_tree> equality conjunction disjunction
 
 %type <parse_tree> block statements statement expression declaration assignment
-%type <parse_tree> control return_stmt conditional while_stmt procedure
+%type <parse_tree> control return_stmt conditional while_stmt procedure import
 
 /* Operator precedence for mathematical operators */
 %left TOKEN_PLUS TOKEN_MINUS
@@ -80,6 +80,7 @@ statement       : expression
                 | declaration
                 | assignment
                 | control
+                | import
                 ;
 
 declaration     : TOKEN_TYPE TOKEN_IDENT
@@ -148,6 +149,12 @@ parameters      : TOKEN_LPAREN TOKEN_RPAREN
 decl_list       : TOKEN_TYPE TOKEN_IDENT
                 | decl_list TOKEN_COMMA TOKEN_TYPE TOKEN_IDENT
                 ;
+
+import          : TOKEN_IMPORT TOKEN_TYPE
+                    {
+                        $$ = new ParseTree(PTT::Import);
+                        $$->make_child(PTT::Type, dyn_cstr_to_str($2));
+                    }
 
 
 

@@ -1,14 +1,16 @@
+import Int
+import Str
 Int x
 if x = 1 then
     Str y
     if z = 2 then
-        z
+        import F32
         whateva
         x
         Int m
+        m
     end
-    m
-    x
+    F32 num
 end
 m
 x
