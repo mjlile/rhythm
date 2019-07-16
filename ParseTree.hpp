@@ -45,13 +45,12 @@ struct ParseTree {
     }
 
 
-    Type get_type() {
-        return type;
-    }
+    Type get_type() { return type; }
 
-    const std::string& get_value() {
-        return value;
-    }
+    const std::string& get_value() { return value; }
+
+    const std::vector<std::unique_ptr<ParseTree>>&
+    get_children() { return children; }
 
     friend std::ostream& operator<<(std::ostream& os, const ParseTree& pt);
 

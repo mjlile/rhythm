@@ -1,11 +1,14 @@
-Int c <- 2.43
-c <- "dsafds"
-if x + 1 < y then
-    if x + 1 < y then
-        if x + 1 < y then
-            "dsadsa"
-            435245
-            213.432432
-        end
+Int x
+if x = 1 then
+    Str y
+    if z = 2 then
+        z
+        whateva
+        x
+        Int m
     end
+    m
+    x
 end
+m
+x
