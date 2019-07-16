@@ -34,6 +34,7 @@ extern "C" int yywrap() { }
 %%
 
 [ \t\r]                   ;
+"import"                return make_token(TOKEN_IMPORT);
 "return"                return make_token(TOKEN_RETURN);
 "if"                    return make_token(TOKEN_IF);
 "then"                  return make_token(TOKEN_THEN);

@@ -1,0 +1,9 @@
+.vscode
+parser.cpp
+parser.hpp
+parser.output
+*.exe
+tokens.cpp
+parser.exe.stackdump
+syntax.rhy
+llvm-project/
