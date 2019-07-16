@@ -1,9 +1,10 @@
 %{
     #include <iostream>
     #include <memory>
-    #include "ParseTree.hpp"
+    #include "parse_tree.hpp"
     extern int yylex();
-    void yyerror(const char *s) { printf("ERROR: %s\n", s); }
+    int line_num = 1;
+    void yyerror(const char *s) { printf("ERROR: %s (line %i)\n", s, line_num); }
     std::unique_ptr<ParseTree> program_tree;
     using PTT = ParseTree::Type;
     // constructs std::string from new[]ed cstr and delete[]s cstr
@@ -246,4 +247,4 @@ post : TOKEN_DOT;
 
 
 literal : TOKEN_INT | TOKEN_REAL | TOKEN_STR;
-eol : TOKEN_EOL | eol TOKEN_EOL;
+eol : TOKEN_EOL { ++line_num; } | eol TOKEN_EOL { ++line_num; };

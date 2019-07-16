@@ -2,6 +2,8 @@
 #include <iostream>
 #include <memory>
 #include <cstring>
+// required because bison does not include headers in parser.hpp
+#include "parse_tree.hpp"
 #include "parser.hpp"
 
 bool savable_token(int t) {

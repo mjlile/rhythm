@@ -3,6 +3,8 @@ all: parser
 clean:
 	rm parser.cpp parser.hpp parser tokens.cpp
 
+force: clean all
+
 parser.cpp: parser.y
 	bison -dv -o $@ $^
 	
