@@ -86,7 +86,6 @@ declaration     : TOKEN_TYPE TOKEN_IDENT
                         $$ = new ParseTree(PTT::Declaration);
                         $$->make_child(PTT::Type, dyn_cstr_to_str($1));
                         $$->make_child(PTT::Identifier, dyn_cstr_to_str($2));
-                        //add_symbol($1->get)
                     }
                 | TOKEN_TYPE TOKEN_IDENT TOKEN_LARROW expression
                     {
