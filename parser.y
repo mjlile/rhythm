@@ -39,6 +39,7 @@
 
 %type <parse_tree> block statements statement expression declaration assignment
 %type <parse_tree> control return_stmt conditional while_stmt procedure import
+%type <parse_tree> parameters decl_list
 
 /* Operator precedence for mathematical operators */
 %left TOKEN_PLUS TOKEN_MINUS
@@ -59,19 +60,19 @@ block           : statements
                 | statement
                     {
                         $$ = new ParseTree(PTT::Block);
-                        $$->adopt_child($1);
+                        $$->adopt_orphan($1);
                     }
                 ;
 
 statements      : statement eol
                     {
                         $$ = new ParseTree(PTT::Block);
-                        $$->adopt_child($1);
+                        $$->adopt_orphan($1);
                     }
                 | statements statement eol
                     {
                         $$ = $1;
-                        $$->adopt_child($2);
+                        $$->adopt_orphan($2);
                     }
                 | eol { $$ = new ParseTree(PTT::Block); }
                 ;
@@ -94,15 +95,16 @@ declaration     : TOKEN_TYPE TOKEN_IDENT
                         $$ = new ParseTree(PTT::Declaration);
                         $$->make_child(PTT::Type, dyn_cstr_to_str($1));
                         $$->make_child(PTT::Identifier, dyn_cstr_to_str($2));
-                        $$->adopt_child($4);
+
+                        $$->adopt_orphan($4);
                     }
                 ;
 
-assignment      : TOKEN_IDENT TOKEN_LARROW expression
+assignment      : expression TOKEN_LARROW expression
                     {
                         $$ = new ParseTree(PTT::Assignment);
-                        $$->make_child(PTT::Identifier, dyn_cstr_to_str($1));
-                        $$->adopt_child($3);
+                        $$->adopt_orphan($1);
+                        $$->adopt_orphan($3);
                     }
                 ;
 
@@ -116,38 +118,55 @@ return_stmt     : TOKEN_RETURN { $$ = new ParseTree(PTT::Return); }
                 | TOKEN_RETURN expression
                     {
                         $$ = new ParseTree(PTT::Return);
-                        $$->adopt_child($2);
+                        $$->adopt_orphan($2);
                     }
                 ;
 
 conditional     : TOKEN_IF expression TOKEN_THEN block TOKEN_END
                     {
                         $$ = new ParseTree(PTT::Conditional);
-                        $$->adopt_child($2);
-                        $$->adopt_child($4);
+                        $$->adopt_orphan($2);
+                        $$->adopt_orphan($4);
                     }
                 ;
 
 while_stmt      : TOKEN_WHILE expression TOKEN_DO block TOKEN_END
                     {
                         $$ = new ParseTree(PTT::While);
-                        $$->adopt_child($2);
-                        $$->adopt_child($4);
+                        $$->adopt_orphan($2);
+                        $$->adopt_orphan($4);
                     }
                 ;
 
 procedure       : TOKEN_PROC TOKEN_IDENT parameters TOKEN_RARROW TOKEN_TYPE block TOKEN_END
                     {
-                        $$ = nullptr; // TODO
+                        $$ = new ParseTree(PTT::Procedure);
+                        $$->make_child(PTT::Identifier, dyn_cstr_to_str($2));
+                        //$$->adopt_orphan($3);
+                        $$->make_child(PTT::Type, dyn_cstr_to_str($5));
+                        // add parameters to beginning of block for proper scoping
+                        $6->adopt_orphan_front($3);
+                        $$->adopt_orphan($6);
                     }
                 ;
 
-parameters      : TOKEN_LPAREN TOKEN_RPAREN
+parameters      : TOKEN_LPAREN TOKEN_RPAREN { $$ = new ParseTree(PTT::DeclList); }
                 | TOKEN_LPAREN decl_list TOKEN_RPAREN
+                    {
+                        $$ = $2;
+                    }
                 ;
 
-decl_list       : TOKEN_TYPE TOKEN_IDENT
-                | decl_list TOKEN_COMMA TOKEN_TYPE TOKEN_IDENT
+decl_list       : declaration
+                    {
+                        $$ = new ParseTree(PTT::DeclList);
+                        $$->adopt_orphan($1);
+                    }
+                | decl_list TOKEN_COMMA declaration
+                    {
+                        $$ = $1;
+                        $$->adopt_orphan($3);
+                    }
                 ;
 
 import          : TOKEN_IMPORT TOKEN_TYPE
@@ -166,8 +185,8 @@ disjunction     : conjunction
                 | disjunction or conjunction
                     {
                         $$ = new ParseTree($2);
-                        $$->adopt_child($1);
-                        $$->adopt_child($3);
+                        $$->adopt_orphan($1);
+                        $$->adopt_orphan($3);
                     }
                 ;
 
@@ -175,8 +194,8 @@ conjunction     : equality
                 | conjunction and equality
                     {
                         $$ = new ParseTree($2);
-                        $$->adopt_child($1);
-                        $$->adopt_child($3);
+                        $$->adopt_orphan($1);
+                        $$->adopt_orphan($3);
                     }
                 ;
 
@@ -184,8 +203,8 @@ equality        : relational
                 | equality eq relational
                     {
                         $$ = new ParseTree($2);
-                        $$->adopt_child($1);
-                        $$->adopt_child($3);
+                        $$->adopt_orphan($1);
+                        $$->adopt_orphan($3);
                     }
                 ;
 
@@ -193,8 +212,8 @@ relational      : additive
                 | relational relate additive
                     {
                         $$ = new ParseTree($2);
-                        $$->adopt_child($1);
-                        $$->adopt_child($3);
+                        $$->adopt_orphan($1);
+                        $$->adopt_orphan($3);
                     }
                 ;
 
@@ -202,8 +221,8 @@ additive        : multiplicative
                 | additive add multiplicative
                     {
                         $$ = new ParseTree($2);
-                        $$->adopt_child($1);
-                        $$->adopt_child($3);
+                        $$->adopt_orphan($1);
+                        $$->adopt_orphan($3);
                     }
                 ;
 
@@ -211,8 +230,8 @@ multiplicative  : prefix
                 | multiplicative multiply prefix
                     {
                         $$ = new ParseTree($2);
-                        $$->adopt_child($1);
-                        $$->adopt_child($3);
+                        $$->adopt_orphan($1);
+                        $$->adopt_orphan($3);
                     }
                 ;
 
@@ -220,7 +239,7 @@ prefix          : postfix
                 | pre prefix
                     {
                         $$ = new ParseTree($1);
-                        $$->adopt_child($2);
+                        $$->adopt_orphan($2);
                     }
                 ;
 
@@ -228,7 +247,7 @@ postfix         : primary
                 | postfix post
                     {
                         $$ = new ParseTree($2);
-                        $$->adopt_child($1);
+                        $$->adopt_orphan($1);
                     }
                 ;
 
@@ -237,7 +256,7 @@ primary         : literal { $$ = new ParseTree(PTT::Literal, dyn_cstr_to_str($1)
                 | TOKEN_LPAREN expression TOKEN_RPAREN
                     {
                         $$ = new ParseTree(PTT::Group);
-                        $$->adopt_child($2);
+                        $$->adopt_orphan($2);
                     }
                 ;
 
