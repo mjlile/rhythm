@@ -1,7 +1,9 @@
 #pragma once
+#include <algorithm>
+
 template<typename Container, typename Value>
 bool contains(const Container& c, const Value& v) {
-    return std::find(std::begin(c), std::end(c), v) != c.end();
+    return std::find(std::begin(c), std::end(c), v) != std::end(c);
 }
 
 // removes all elements after and including the last appearence of v

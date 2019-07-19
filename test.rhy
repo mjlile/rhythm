@@ -1,16 +1,16 @@
 import Int
-import Str
-Int x
-if x = 1 then
-    Str y
-    if z = 2 then
-        import F32
-        whateva
-        x
-        Int m
-        m
+
+Int x <- 1
+x <- x + 1
+
+
+pro main(Int argc) -> Int
+    argc
+    if x = 2 then
+        Int y <- x * x
     end
-    F32 num
+    pro temp(Int x) -> Int 
+        x + 1
+    end
+    temp
 end
-m
-x

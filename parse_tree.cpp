@@ -17,6 +17,8 @@ const std::map<PTT, const char*> type_names {
     {PTT::Operator, "op"},
     {PTT::Literal, "literal"},
     {PTT::Identifier, "ident"},
+    {PTT::Procedure, "procedure"},
+    {PTT::DeclList, "decls"},
     {PTT::Type, "type"},
     {PTT::Import, "import"}
 };

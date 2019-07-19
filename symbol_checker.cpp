@@ -25,6 +25,13 @@ void check_definition(const std::unique_ptr<ParseTree>& node, std::vector<std::s
     }
 }
 
+
+void define_procedure(const std::unique_ptr<ParseTree>& node,
+        std::vector<std::string>& symbol_table)
+{
+    symbol_table.push_back(node->get_children()[0]->get_value());
+}
+
 void manage_symbols(const std::unique_ptr<ParseTree>& node,
         std::vector<std::string>& undefined,
         std::vector<std::string>& symbol_table)
@@ -38,6 +45,8 @@ void manage_symbols(const std::unique_ptr<ParseTree>& node,
         case PTT::Declaration:
             declare_var(node, symbol_table);
             break;
+        case PTT::Procedure:
+            define_procedure(node, symbol_table);
         case PTT::Import:
             import_type(node, symbol_table);
             break;

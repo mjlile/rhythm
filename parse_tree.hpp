@@ -15,12 +15,14 @@ struct ParseTree {
         While, // condition, block
         Return, // [expression]
         Import, // type
+        Procedure, // ident, (return) type, block (params at start of block)
+        DeclList, // declaration+
 
         Group, // expr
         Operator, // operand+
-        Literal, // no children, value
-        Identifier, // no children, value
-        Type // no children, value
+        Literal, // no children
+        Identifier, // no children
+        Type // no children
     };
 
     ParseTree(Type type) : type(type), token(-1) {}
@@ -33,9 +35,14 @@ struct ParseTree {
         children.push_back(std::move(child));
     }
 
-    // takes ownership of dynamically allocated child raw ptr
-    void adopt_child(ParseTree* child) {
+    // takes ownership of dynamically allocated child raw ptr without existing parent
+    void adopt_orphan(ParseTree* child) {
         add_child(std::unique_ptr<ParseTree>(child));
+    }
+
+    // adopt orphan and insert at front of children
+    void adopt_orphan_front(ParseTree* child) {
+        children.insert(children.begin(), std::unique_ptr<ParseTree>(child));
     }
 
     void make_child(Type type, const std::string& val) {
@@ -52,6 +59,8 @@ struct ParseTree {
 
     const std::vector<std::unique_ptr<ParseTree>>&
     get_children() const { return children; }
+    const std::unique_ptr<ParseTree>&
+    get_child(std::size_t i) const { return children[i]; }
 
     friend std::ostream& operator<<(std::ostream& os, const ParseTree& pt);
 

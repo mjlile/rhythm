@@ -71,6 +71,6 @@ extern "C" int yywrap() { }
 "*"                     return make_token(TOKEN_STAR);
 "/"                     return make_token(TOKEN_SLASH);
 "\n"                    return make_token(TOKEN_EOL);
-.                       std::cerr << "Unknown token: " << std::string(yytext, yyleng); yyterminate();
+.                       std::cerr << "Unknown token: " << std::string(yytext, yyleng) << std::endl;
 
 %%

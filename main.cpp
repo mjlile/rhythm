@@ -1,6 +1,7 @@
 #include <iostream>
 #include "parse_tree.hpp"
 #include "symbol_checker.hpp"
+//#include "code_gen.hpp"
 extern std::unique_ptr<ParseTree> program_tree;
 extern int yyparse();
 
