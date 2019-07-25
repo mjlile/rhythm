@@ -11,16 +11,9 @@ bool savable_token(int t) {
         || t == TOKEN_REAL || t == TOKEN_STR;
 }
 
-char* alloc_cstring() {
-    // yacc/bison infrastructure requires raw dynamic memory
-    char* str = new char[yyleng];
-    strcpy(str, yytext);
-    return str;
-}
-
 int make_token(int t) {
     if (savable_token(t)) {
-        yylval.string = alloc_cstring();
+        yylval.string = new std::string(yytext, yyleng);
     }
     else {
         yylval.token = t;

@@ -7,3 +7,4 @@ tokens.cpp
 parser.exe.stackdump
 syntax.rhy
 llvm-project/
+*.temp

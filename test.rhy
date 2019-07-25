@@ -1,16 +1,14 @@
-import Int
+import x
+import Str
+Str y <- x+1*2-"ad"/1.23
+Int z
+return
+return x + y - z
+if x = 1 then
+    do_stuff
+    do_other_stuff
+end
 
-Int x <- 1
-x <- x + 1
-
-
-pro main(Int argc) -> Int
-    argc
-    if x = 2 then
-        Int y <- x * x
-    end
-    pro temp(Int x) -> Int 
-        x + 1
-    end
-    temp
+while z = y do
+    if y = 2 then sadsa end
 end

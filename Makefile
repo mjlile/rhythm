@@ -14,4 +14,4 @@ tokens.cpp: tokens.l parser.hpp
 	lex -o $@ $^
 
 parser: parser.cpp main.cpp tokens.cpp
-	g++ -o $@ *.cpp
+	g++ -o $@ *.cpp --std=gnu++17 -g3

@@ -1,23 +1,39 @@
 %{
     #include <iostream>
     #include <memory>
+    #include <string>
     #include "parse_tree.hpp"
     extern int yylex();
     int line_num = 1;
     void yyerror(const char *s) { printf("ERROR: %s (line %i)\n", s, line_num); }
-    std::unique_ptr<ParseTree> program_tree;
-    using PTT = ParseTree::Type;
-    // constructs std::string from new[]ed cstr and delete[]s cstr
-    std::string dyn_cstr_to_str(char* cstr) {
-        // anonymous unique_ptr delete[]s cstr after string construction.
-        // notice char[] tells unique_ptr to delete[] instead of delete
-        return std::string(std::unique_ptr<char[]>(cstr).get());
+    std::vector<Statement> program;
+
+    Expression* operator_to_invocation(int op_token, Expression* expr1, Expression* expr2 = nullptr) {
+        // C++ style operator__ e.g. operator+, operator()
+        std::string name = "operator" + std::to_string(op_token);
+        Invocation invoc(name);
+        invoc.add_arg(*expr1);
+        if (expr2) {
+            invoc.add_arg(*expr2);
+        }
+        return new Expression(invoc);
     }
 %}
 
 %union {
-    ParseTree* parse_tree;
-    char* string;
+    Literal* literal;
+    Invocation* Invocation;
+    Expression* expression;
+    Declaration* declaration;
+    std::vector<Declaration>* parameters;
+    Import* import;
+    Conditional* conditional;
+    ConditionalLoop* conditional_loop;
+    Procedure* procedure;
+    Return* return_stmt;
+    Statement* statement;
+    std::vector<Statement>* block;
+    std::string* string;
     int token;
 }
 
@@ -31,15 +47,23 @@
 %token <token> TOKEN_RETURN TOKEN_IF TOKEN_THEN TOKEN_WHILE TOKEN_DO TOKEN_END
 %token <token> TOKEN_AND TOKEN_OR TOKEN_PROC TOKEN_IMPORT
 
-%type <string> literal 
 %type <token> or and eq relate add multiply pre post
 
-%type <parse_tree> primary postfix prefix multiplicative additive relational 
-%type <parse_tree> equality conjunction disjunction
+%type <literal> literal 
+%type <expression> primary postfix prefix multiplicative additive relational 
+%type <expression> equality conjunction disjunction
+%type <expression> expression assignment
 
-%type <parse_tree> block statements statement expression declaration assignment
-%type <parse_tree> control return_stmt conditional while_stmt procedure import
-%type <parse_tree> parameters decl_list
+%type <import> import
+%type <declaration> declaration
+%type <conditional> conditional
+%type <conditional_loop> while_stmt
+%type <procedure> procedure
+%type <parameters> parameters decl_list
+%type <return_stmt> return_stmt
+%type <statement> statement control
+
+%type <block> block statements
 
 /* Operator precedence for mathematical operators */
 %left TOKEN_PLUS TOKEN_MINUS
@@ -51,7 +75,7 @@
 
 program         : block
                     {
-                        program_tree = std::unique_ptr<ParseTree>($1);
+                        program = *$1;
                         std::cout << "success" << std::endl;
                     }
                 ;
@@ -59,98 +83,89 @@ program         : block
 block           : statements
                 | statement
                     {
-                        $$ = new ParseTree(PTT::Block);
-                        $$->adopt_orphan($1);
+                        $$ = new std::vector<Statement>();
+                        $$->push_back(*$1);
                     }
                 ;
 
 statements      : statement eol
                     {
-                        $$ = new ParseTree(PTT::Block);
-                        $$->adopt_orphan($1);
+                        $$ = new std::vector<Statement>();
+                        $$->push_back(*$1);
                     }
                 | statements statement eol
                     {
                         $$ = $1;
-                        $$->adopt_orphan($2);
+                        $$->push_back(*$2);
                     }
-                | eol { $$ = new ParseTree(PTT::Block); }
+                | eol { $$ = new std::vector<Statement>(); }
                 ;
 
-statement       : expression
-                | declaration
-                | assignment
+statement       : expression { $$ = new Statement(*$1); }
+                | declaration { $$ = new Statement(*$1); }
+                | assignment { $$ = new Statement(*$1); }
+                | import { $$ = new Statement(*$1); }
                 | control
-                | import
                 ;
 
 declaration     : TOKEN_TYPE TOKEN_IDENT
                     {
-                        $$ = new ParseTree(PTT::Declaration);
-                        $$->make_child(PTT::Type, dyn_cstr_to_str($1));
-                        $$->make_child(PTT::Identifier, dyn_cstr_to_str($2));
+                        $$ = new Declaration(*$1, *$2);
+                        delete $1;
+                        delete $2;
                     }
                 | TOKEN_TYPE TOKEN_IDENT TOKEN_LARROW expression
                     {
-                        $$ = new ParseTree(PTT::Declaration);
-                        $$->make_child(PTT::Type, dyn_cstr_to_str($1));
-                        $$->make_child(PTT::Identifier, dyn_cstr_to_str($2));
-
-                        $$->adopt_orphan($4);
+                        $$ = new Declaration(*$1, *$2, *$4);
+                        delete $1;
+                        delete $2;
+                        delete $4;
                     }
                 ;
 
 assignment      : expression TOKEN_LARROW expression
                     {
-                        $$ = new ParseTree(PTT::Assignment);
-                        $$->adopt_orphan($1);
-                        $$->adopt_orphan($3);
+                        $$ = operator_to_invocation($2, $1, $3);
                     }
                 ;
 
-control         : return_stmt
-                | conditional
-                | while_stmt
-                | procedure
+control         : return_stmt { $$ = new Statement(*$1); delete $1; }
+                | conditional { $$ = new Statement(*$1); delete $1; }
+                | while_stmt { $$ = new Statement(*$1); delete $1; }
+                | procedure { $$ = new Statement(*$1); delete $1; }
                 ;
 
-return_stmt     : TOKEN_RETURN { $$ = new ParseTree(PTT::Return); }
-                | TOKEN_RETURN expression
-                    {
-                        $$ = new ParseTree(PTT::Return);
-                        $$->adopt_orphan($2);
-                    }
+return_stmt     : TOKEN_RETURN { $$ = new Return(); }
+                | TOKEN_RETURN expression { $$ = new Return(*$2); delete $2; }
                 ;
 
 conditional     : TOKEN_IF expression TOKEN_THEN block TOKEN_END
                     {
-                        $$ = new ParseTree(PTT::Conditional);
-                        $$->adopt_orphan($2);
-                        $$->adopt_orphan($4);
+                        $$ = new Conditional(*$2, *$4);
+                        delete $2;
+                        delete $4;
                     }
                 ;
 
 while_stmt      : TOKEN_WHILE expression TOKEN_DO block TOKEN_END
                     {
-                        $$ = new ParseTree(PTT::While);
-                        $$->adopt_orphan($2);
-                        $$->adopt_orphan($4);
+                        $$ = new ConditionalLoop(Conditional(*$2, *$4));
+                        delete $2;
+                        delete $4;
                     }
                 ;
 
 procedure       : TOKEN_PROC TOKEN_IDENT parameters TOKEN_RARROW TOKEN_TYPE block TOKEN_END
                     {
-                        $$ = new ParseTree(PTT::Procedure);
-                        $$->make_child(PTT::Identifier, dyn_cstr_to_str($2));
-                        //$$->adopt_orphan($3);
-                        $$->make_child(PTT::Type, dyn_cstr_to_str($5));
-                        // add parameters to beginning of block for proper scoping
-                        $6->adopt_orphan_front($3);
-                        $$->adopt_orphan($6);
+                        $$ = new Procedure(*$2, *$3, *$5, *$6);
+                        delete $2;
+                        delete $3;
+                        delete $5;
+                        delete $6;
                     }
                 ;
 
-parameters      : TOKEN_LPAREN TOKEN_RPAREN { $$ = new ParseTree(PTT::DeclList); }
+parameters      : TOKEN_LPAREN TOKEN_RPAREN { $$ = new std::vector<Declaration>(); }
                 | TOKEN_LPAREN decl_list TOKEN_RPAREN
                     {
                         $$ = $2;
@@ -159,21 +174,22 @@ parameters      : TOKEN_LPAREN TOKEN_RPAREN { $$ = new ParseTree(PTT::DeclList);
 
 decl_list       : declaration
                     {
-                        $$ = new ParseTree(PTT::DeclList);
-                        $$->adopt_orphan($1);
+                        $$ = new std::vector<Declaration>();
+                        $$->push_back(*$1);
+                        delete $1;
                     }
                 | decl_list TOKEN_COMMA declaration
                     {
                         $$ = $1;
-                        $$->adopt_orphan($3);
+                        $$->push_back(*$3);
+                        delete $3;
                     }
                 ;
 
 import          : TOKEN_IMPORT TOKEN_TYPE
-                    {
-                        $$ = new ParseTree(PTT::Import);
-                        $$->make_child(PTT::Type, dyn_cstr_to_str($2));
-                    }
+                    { $$ = new Import(*$2); delete $2; }
+                | TOKEN_IMPORT TOKEN_IDENT
+                    { $$ = new Import(*$2); delete $2; }
 
 
 
@@ -184,79 +200,64 @@ expression      : disjunction
 disjunction     : conjunction
                 | disjunction or conjunction
                     {
-                        $$ = new ParseTree($2);
-                        $$->adopt_orphan($1);
-                        $$->adopt_orphan($3);
+                        $$ = operator_to_invocation($2, $1, $3);
                     }
                 ;
 
 conjunction     : equality
                 | conjunction and equality
                     {
-                        $$ = new ParseTree($2);
-                        $$->adopt_orphan($1);
-                        $$->adopt_orphan($3);
+                        $$ = operator_to_invocation($2, $1, $3);
                     }
                 ;
 
 equality        : relational
                 | equality eq relational
                     {
-                        $$ = new ParseTree($2);
-                        $$->adopt_orphan($1);
-                        $$->adopt_orphan($3);
+                        $$ = operator_to_invocation($2, $1, $3);
                     }
                 ;
 
 relational      : additive
                 | relational relate additive
                     {
-                        $$ = new ParseTree($2);
-                        $$->adopt_orphan($1);
-                        $$->adopt_orphan($3);
+                        $$ = operator_to_invocation($2, $1, $3);
                     }
                 ;
 
 additive        : multiplicative
                 | additive add multiplicative
                     {
-                        $$ = new ParseTree($2);
-                        $$->adopt_orphan($1);
-                        $$->adopt_orphan($3);
+                        $$ = operator_to_invocation($2, $1, $3);
                     }
                 ;
 
 multiplicative  : prefix
                 | multiplicative multiply prefix
                     {
-                        $$ = new ParseTree($2);
-                        $$->adopt_orphan($1);
-                        $$->adopt_orphan($3);
+                        $$ = operator_to_invocation($2, $1, $3);
                     }
                 ;
 
 prefix          : postfix
                 | pre prefix
                     {
-                        $$ = new ParseTree($1);
-                        $$->adopt_orphan($2);
+                        $$ = operator_to_invocation($1, $2);
                     }
                 ;
 
 postfix         : primary
                 | postfix post
                     {
-                        $$ = new ParseTree($2);
-                        $$->adopt_orphan($1);
+                        $$ = operator_to_invocation($2, $1);
                     }
                 ;
 
-primary         : literal { $$ = new ParseTree(PTT::Literal, dyn_cstr_to_str($1)); }
-                | TOKEN_IDENT { $$ = new ParseTree(PTT::Identifier, dyn_cstr_to_str($1)); }
+primary         : literal { $$ = new Expression(*$1); delete $1; }
+                | TOKEN_IDENT { $$ = new Expression(*$1); delete $1; }
                 | TOKEN_LPAREN expression TOKEN_RPAREN
                     {
-                        $$ = new ParseTree(PTT::Group);
-                        $$->adopt_orphan($2);
+                        $$ = operator_to_invocation($1, $2);
                     }
                 ;
 
@@ -272,5 +273,20 @@ pre : TOKEN_BANG | TOKEN_MINUS | TOKEN_STAR;
 post : TOKEN_DOT;
 
 
-literal : TOKEN_INT | TOKEN_REAL | TOKEN_STR;
+literal : TOKEN_INT
+            {
+                $$ = new Literal(*$1);
+                delete $1;
+            }
+        | TOKEN_REAL
+            {
+                $$ = new Literal(*$1);
+                delete $1;
+            }
+        | TOKEN_STR
+            {
+                $$ = new Literal(*$1);
+                delete $1;
+            }
+        ;
 eol : TOKEN_EOL { ++line_num; } | eol TOKEN_EOL { ++line_num; };
