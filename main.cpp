@@ -12,6 +12,7 @@ int main(int argc, char **argv)
     yyparse();
     std::cout << program.size() << std::endl;
     std::cout << program << std::endl;
+    std::cout << sizeof(program[0]) << std::endl;
 
 /*
     std::vector<std::string> undefined_symbols;
