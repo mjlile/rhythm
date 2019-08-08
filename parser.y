@@ -2,21 +2,36 @@
     #include <iostream>
     #include <memory>
     #include <string>
+    #include <map>
     #include "parse_tree.hpp"
+    #include "parser.hpp"
     extern int yylex();
     int line_num = 1;
     void yyerror(const char *s) { printf("ERROR: %s (line %i)\n", s, line_num); }
     std::vector<Statement> program;
 
+    std::map<int, std::string> op_to_string = {
+        {TOKEN_PLUS, "+"},
+        {TOKEN_MINUS, "-"},
+        {TOKEN_STAR, "*"},
+        {TOKEN_SLASH, "/"},
+        {TOKEN_EQ, "="},
+        {TOKEN_LT, "<"},
+        {TOKEN_LE, "<="},
+        {TOKEN_GT, ">"},
+        {TOKEN_GE, ">="},
+        {TOKEN_LARROW, "<-"},
+    };
+
     Expression* operator_to_invocation(int op_token, Expression* expr1, Expression* expr2 = nullptr) {
         // C++ style operator__ e.g. operator+, operator()
-        std::string name = "operator" + std::to_string(op_token);
-        Invocation invoc(name);
-        invoc.add_arg(*expr1);
+        std::string name = "operator" + op_to_string[op_token];
+        std::vector<Expression> args;
+        args.push_back(*expr1);
         if (expr2) {
-            invoc.add_arg(*expr2);
+            args.push_back(*expr2);
         }
-        return new Expression(invoc);
+        return new Expression(Invocation(name, args));
     }
 %}
 
@@ -275,17 +290,17 @@ post : TOKEN_DOT;
 
 literal : TOKEN_INT
             {
-                $$ = new Literal(*$1);
+                $$ = new Literal(*$1, Literal::integer);
                 delete $1;
             }
         | TOKEN_REAL
             {
-                $$ = new Literal(*$1);
+                $$ = new Literal(*$1, Literal::rational);
                 delete $1;
             }
         | TOKEN_STR
             {
-                $$ = new Literal(*$1);
+                $$ = new Literal(*$1, Literal::string);
                 delete $1;
             }
         ;

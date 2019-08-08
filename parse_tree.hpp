@@ -21,27 +21,29 @@ namespace details {
 struct Expression;
 
 struct Literal {
-    Literal(const std::string& value) : value_(value) {}
-    const std::string& value() const { return value_; }
+    enum Type { string, integer, rational };
+    Literal(const std::string& value, Type t) : value_(value) {}
+    const auto& value() const { return value_; }
+    Type        type()  const { return type_; }
 private:
     std::string value_;
+    Type type_;
 };
 
 struct Invocation {
-    Invocation(const std::string& name) : name_(name) {}
-    void add_arg(const Expression& arg) { args_.push_back(arg); }
-    const std::string& name() const { return name_; }
+    Invocation(const std::string& name, const std::vector<Expression> args)
+             : name_(name), args_(args) {}
+    const std::string& name()             const { return name_; }
     const std::vector<Expression>& args() const { return args_; }
 private:
     std::string name_;
     std::vector<Expression> args_;
-    
 };
 
 struct Expression {
     using Variable = std::string;
-    Expression(const Literal& expr) : value_(expr) {}
-    Expression(const Variable& expr) : value_(expr) {}
+    Expression(const Literal& expr)    : value_(expr) {}
+    Expression(const Variable& expr)   : value_(expr) {}
     Expression(const Invocation& expr) : value_(expr) {}
 
     const auto& value() const { return value_; }
@@ -73,8 +75,8 @@ struct Declaration {
                 const Expression& initializer)
               : type_(type), variable_(variable), initializer_(initializer) {}
               
-    const auto& type() const { return type_; }
-    const auto& variable() const { return variable_; }
+    const auto& type()        const { return type_; }
+    const auto& variable()    const { return variable_; }
     const auto& initializer() const { return initializer_; }
 private:
     std::string type_;
@@ -94,7 +96,7 @@ struct Conditional {
     Conditional(const Expression& condition, std::vector<Statement> block)
               : condition_(condition), block_(block) {}
     const auto& condition() const { return condition_; }
-    const auto& block() const { return block_; }
+    const auto& block()     const { return block_; }
 private:
     Expression condition_;
     std::vector<Statement> block_;
@@ -116,10 +118,10 @@ struct Procedure {
             : name_(name), return_type_(return_type),
               parameters_(parameters), block_(block) {}
 
-    const std::string& name() const { return name_; }
-    const std::string& return_type() const { return return_type_; }
-    const std::vector<Declaration>& parameters() const { return parameters_; }
-    const std::vector<Statement>& block() const { return block_; }
+    const auto& name()        const { return name_; }
+    const auto& return_type() const { return return_type_; }
+    const auto& parameters()  const { return parameters_; }
+    const auto& block()       const { return block_; }
 
 private:
     std::string name_;
@@ -130,23 +132,33 @@ private:
 
 struct Return {
     Return(const Expression& value) : value_(value) {}
-    Return() : value_(std::nullopt) {}
+    Return()                        : value_(std::nullopt) {}
     const auto& value() const { return value_; }
 private:
     std::optional<Expression> value_;
 };
 
 struct Statement {
-    Statement(const Expression& value) : value_(value) {}
-    Statement(const Declaration& value) : value_(value) {}
-    Statement(const Import& value) : value_(value) {}
-    Statement(const Conditional& value) : value_(value) {}
+    using variant = 
+    std::variant<Expression,
+                 Declaration,
+                 Import,
+                 Conditional,
+                 ConditionalLoop,
+                 Procedure,
+                 Return>;
+    //             /*
+    Statement(const Expression&      value) : value_(value) {}
+    Statement(const Declaration&     value) : value_(value) {}
+    Statement(const Import&          value) : value_(value) {}
+    Statement(const Conditional&     value) : value_(value) {}
     Statement(const ConditionalLoop& value) : value_(value) {}
-    Statement(const Procedure& value) : value_(value) {}
-    Statement(const Return& value) : value_(value) {}
+    Statement(const Procedure&       value) : value_(value) {}
+    Statement(const Return&          value) : value_(value) {}
+    //*/
+    //Statement(const variant& value) : value_(value) {}
 
     const auto& value() const { return value_; }
 private:
-    std::variant<Expression, Declaration, Import,
-                 Conditional, ConditionalLoop, Procedure, Return> value_;
+    variant value_;
 };
