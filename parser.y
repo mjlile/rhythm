@@ -8,7 +8,7 @@
     extern int yylex();
     int line_num = 1;
     void yyerror(const char *s) { printf("ERROR: %s (line %i)\n", s, line_num); }
-    std::vector<Statement> program;
+    std::vector<Statement>* program;
 
     std::map<int, std::string> op_to_string = {
         {TOKEN_PLUS, "+"},
@@ -37,7 +37,7 @@
 
 %union {
     Literal* literal;
-    Invocation* Invocation;
+    Invocation* invocation;
     Expression* expression;
     Declaration* declaration;
     std::vector<Declaration>* parameters;
@@ -90,7 +90,7 @@
 
 program         : block
                     {
-                        program = *$1;
+                        program = $1;
                         std::cout << "success" << std::endl;
                     }
                 ;
