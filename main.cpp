@@ -3,16 +3,16 @@
 #include "print_tree.hpp"
 //#include "symbol_checker.hpp"
 //#include "code_gen.hpp"
-extern std::vector<Statement> program;
+extern std::vector<Statement>* program;
 extern int yyparse();
 
 
 int main(int argc, char **argv)
 {
     yyparse();
-    std::cout << program.size() << std::endl;
-    std::cout << program << std::endl;
-    std::cout << sizeof(program[0]) << std::endl;
+    std::cout << program->size() << std::endl;
+    std::cout << *program << std::endl;
+    std::cout << sizeof(program->at(0)) << std::endl;
 
 /*
     std::vector<std::string> undefined_symbols;

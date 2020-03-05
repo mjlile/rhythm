@@ -26,8 +26,8 @@ void log_error(const std::sting& str) {
     std::cerr << str << std::endl;
 }
 
-llvm::Value *log_error_v(const char *Str) {
-    log_error(Str);
+llvm::Value *log_error_v(const char *str) {
+    log_error("error: "s + str);
     return nullptr;
 }
 
@@ -62,8 +62,7 @@ llvm::Value* code_gen_add(llvm::Value* lhs, llvm::Value* rhs) {
 std::vector<llvm::Value*> code_gen_args(const std::vector<Expression>& args) {
     std::vector<llvm::Value*> val_args;
     std::transform(args.cbegin(), args.cend(),
-                   std::back_insertor(val_args),
-                   [](const auto& e){ return code_gen(e); });
+                   std::back_insertor(val_args), code_gen);
     return val_args;
 }
 
@@ -71,7 +70,7 @@ std::vector<llvm::Value*> code_gen_args(const std::vector<Expression>& args) {
 llvm::Value* code_gen(const Invocation& invoc) {
     Function *callee = module->getFunction(invoc.name());
     if (!callee) {
-        return log_error_v("Call to unknown procedure "s + invoc.name());
+        return log_error_v("call to unknown procedure "s + invoc.name());
     }
     if (callee->arg_size() != invoc.args().size()) {
         return log_error_v(invoc.name() + " requires "s + callee->arg_size()
@@ -79,9 +78,9 @@ llvm::Value* code_gen(const Invocation& invoc) {
     }
 
     auto arg_vals = code_gen_args(invoc.args());
-    if (std::count(eval_args.begin(), eval_args.end(), nullptr)) {
-        // error in code_gen for expressions, error already logged
-        return nullptr;
+    if (std::find(eval_args.begin(), eval_args.end(), nullptr) 
+        != eval_args.end()) {
+        return log_error_v("bad argument to procedure "s + invoc.name());
     }
 
     return builder.CreateCall(callee, arg_vals, "calltmp");
@@ -91,20 +90,69 @@ llvm::Value* code_gen(const std::string& variable) {
     return log_error_v();
 }
 
-llvm::Value* code_gen(const Expression& expr) {
-    llvm::Value* result;
-    std::visit([&result](auto const& value){ result = code_gen(value); }, expr.value());
-    return result;
+template<typename I1, typename I2, typename BP> 
+// I1, I2 model InputIterator, BP models BinaryProcedure
+// pre: the range beginning with first two is no longer than [first1, limit1).
+//      proc takes arguments of type value_type(I1), value_type(I2)
+I2 for_each_pairwise(I1 first1, I1 limit1, I2 first2, BP proc) {
+    while (first1 != limit1) {
+        proc(*first1++, *first2++);
+    }
+    return first2;
+}
+
+llvm::Value* code_gen(const Procedure& proc) {
+    // check for function redefinition
+    Function *redef_check = module->getFunction(Proto->getName());
+    if(redef_check && !redef_check->empty()) {
+        return log_error_v("function "s + proc.name() + " redefined");
+    }
+    // Make the function type:  int(int...) etc.
+    std::vector<Type *> param_types(proc.parameters().size(), Type::getIntTy(TheContext)); // TODO: types
+    FunctionType *ft = FunctionType::get(Type::getIntTy(TheContext), param_types, false); //TODO: types
+
+    Function *f = Function::Create(ft, Function::ExternalLinkage, proc.name(), module.get());
+
+    // Set names for all arguments.
+    for_each_pairwise(f->args().begin(), f->args().end()), 
+                    std::begin(proc.parameters()),
+                    [](auto& llvm_arg, const Declaration& arg){ 
+                        llvm_arg.setName(arg.variable());
+                    });
+                    //todo
+
+    // Create a new basic block to start insertion into.
+    BasicBlock *bb = BasicBlock::Create(context, "entry", f);
+    builder.SetInsertPoint(bb);
+
+    // Record the function arguments in the NamedValues map.
+    named_values.clear();
+    for (auto &param : f->args())
+        named_values[param.variable()] = &param;
+
+    if (Value *body_ret = code_gen(proc.body())) {
+        // Finish off the function.
+        builder.CreateRet(body_ret);
+
+        // Validate the generated code, checking for consistency.
+        verifyFunction(*f);
+
+        return TheFunction;
+    }
+
+    // Error reading body, remove function.
+    TheFunction->eraseFromParent();
+    return log_error_v("could not generate procedure "s + proc.name());
+}
+
+// code gen for variant valued elements: expressions & statements
+template<typename VariantValued>
+llvm::Value* code_gen(const VariantValued& v) {
+    return std::visit(code_gen, v.value());
 }
 
 llvm::Value* code_gen(const Declaration& stmt) {
  
-}
-
-llvm::Value* code_gen(const Statement& stmt) {
-    llvm::Value* result;
-    std::visit([&result](auto const& value){ result = code_gen(value); }, stmt.value());
-    return result;
 }
 
 std::optional<llvm::Instruction::BinaryOps>
