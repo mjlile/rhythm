@@ -4,11 +4,11 @@ Str y <- x+1*2-"ad"/1.23
 Int z
 return
 return x + y - z
-if x = 1 then
+if x = 1 {
     do_stuff
     do_other_stuff
-end
+}
 
-while z = y do
-    if y = 2 then sadsa end
-end
+while z = y {
+    if y = 2 { sadsa }
+}

@@ -59,7 +59,7 @@
 %token <token> TOKEN_LBRACK TOKEN_RBRACK TOKEN_LARROW TOKEN_RARROW TOKEN_DOT TOKEN_COMMA
 %token <token> TOKEN_BANG TOKEN_PLUS TOKEN_MINUS TOKEN_STAR TOKEN_SLASH
 /* keywords */
-%token <token> TOKEN_RETURN TOKEN_IF TOKEN_THEN TOKEN_WHILE TOKEN_DO TOKEN_END
+%token <token> TOKEN_RETURN TOKEN_IF TOKEN_WHILE TOKEN_DO
 %token <token> TOKEN_AND TOKEN_OR TOKEN_PROC TOKEN_IMPORT
 
 %type <token> or and eq relate add multiply pre post
@@ -154,7 +154,7 @@ return_stmt     : TOKEN_RETURN { $$ = new Return(); }
                 | TOKEN_RETURN expression { $$ = new Return(*$2); delete $2; }
                 ;
 
-conditional     : TOKEN_IF expression TOKEN_THEN block TOKEN_END
+conditional     : TOKEN_IF expression TOKEN_LBRACE block TOKEN_RBRACE
                     {
                         $$ = new Conditional(*$2, *$4);
                         delete $2;
@@ -162,7 +162,7 @@ conditional     : TOKEN_IF expression TOKEN_THEN block TOKEN_END
                     }
                 ;
 
-while_stmt      : TOKEN_WHILE expression TOKEN_DO block TOKEN_END
+while_stmt      : TOKEN_WHILE expression TOKEN_LBRACE block TOKEN_RBRACE
                     {
                         $$ = new ConditionalLoop(Conditional(*$2, *$4));
                         delete $2;
@@ -170,13 +170,13 @@ while_stmt      : TOKEN_WHILE expression TOKEN_DO block TOKEN_END
                     }
                 ;
 
-procedure       : TOKEN_PROC TOKEN_IDENT parameters TOKEN_RARROW TOKEN_TYPE block TOKEN_END
+procedure       : TOKEN_PROC TOKEN_IDENT parameters TOKEN_RARROW TOKEN_TYPE TOKEN_LBRACE block TOKEN_RBRACE
                     {
-                        $$ = new Procedure(*$2, *$3, *$5, *$6);
+                        $$ = new Procedure(*$2, *$3, *$5, *$7);
                         delete $2;
                         delete $3;
                         delete $5;
-                        delete $6;
+                        delete $7;
                     }
                 ;
 
