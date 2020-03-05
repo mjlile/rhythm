@@ -30,11 +30,8 @@ extern "C" int yywrap() { }
 "import"                return make_token(TOKEN_IMPORT);
 "return"                return make_token(TOKEN_RETURN);
 "if"                    return make_token(TOKEN_IF);
-"then"                  return make_token(TOKEN_THEN);
 "while"                 return make_token(TOKEN_WHILE);
-"do"                    return make_token(TOKEN_DO);
 "pro"                   return make_token(TOKEN_PROC);
-"end"                   return make_token(TOKEN_END);
 "and"                   return make_token(TOKEN_AND);
 "or"                    return make_token(TOKEN_OR);
 [a-z][a-zA-Z0-9_]*      return make_token(TOKEN_IDENT);
