@@ -57,10 +57,10 @@
 %token <token> TOKEN_EOL TOKEN_EQ TOKEN_NE TOKEN_LT TOKEN_LE TOKEN_GT
 %token <token> TOKEN_GE TOKEN_LPAREN TOKEN_RPAREN TOKEN_LBRACE TOKEN_RBRACE
 %token <token> TOKEN_LBRACK TOKEN_RBRACK TOKEN_LARROW TOKEN_RARROW TOKEN_DOT TOKEN_COMMA
-%token <token> TOKEN_BANG TOKEN_PLUS TOKEN_MINUS TOKEN_STAR TOKEN_SLASH
+%token <token> TOKEN_COLON TOKEN_BANG TOKEN_PLUS TOKEN_MINUS TOKEN_STAR TOKEN_SLASH
 /* keywords */
 %token <token> TOKEN_RETURN TOKEN_IF TOKEN_WHILE TOKEN_DO
-%token <token> TOKEN_AND TOKEN_OR TOKEN_PROC TOKEN_IMPORT
+%token <token> TOKEN_AND TOKEN_OR TOKEN_PROC TOKEN_IMPORT TOKEN_LET
 
 %type <token> or and eq relate add multiply pre post
 
@@ -70,6 +70,7 @@
 %type <expression> expression assignment
 
 %type <import> import
+%type <invocation> invocation
 %type <declaration> declaration
 %type <conditional> conditional
 %type <conditional_loop> while_stmt
@@ -119,20 +120,28 @@ statements      : statement eol
 statement       : expression { $$ = new Statement(*$1); }
                 | declaration { $$ = new Statement(*$1); }
                 | assignment { $$ = new Statement(*$1); }
+                | invocation { $$ = new Statement(*$1); }
                 | import { $$ = new Statement(*$1); }
                 | control
                 ;
 
-declaration     : TOKEN_TYPE TOKEN_IDENT
+invocation      : TOKEN_IDENT TOKEN_LPAREN expression TOKEN_RPAREN
                     {
-                        $$ = new Declaration(*$1, *$2);
+                        $$ = new Invocation(*$1, {*$3});
                         delete $1;
-                        delete $2;
+                        delete $3;
                     }
-                | TOKEN_TYPE TOKEN_IDENT TOKEN_LARROW expression
+
+declaration     : TOKEN_LET TOKEN_IDENT TOKEN_COLON TOKEN_TYPE
                     {
-                        $$ = new Declaration(*$1, *$2, *$4);
-                        delete $1;
+                        $$ = new Declaration(*$4, *$2);
+                        delete $2;
+                        delete $4;
+                    }
+                | TOKEN_LET TOKEN_IDENT TOKEN_COLON TOKEN_TYPE TOKEN_LARROW expression
+                    {
+                        $$ = new Declaration(*$4, *$2, *$6);
+                        delete $6;
                         delete $2;
                         delete $4;
                     }

@@ -1,7 +1,7 @@
-all: parser
+all: rhythmc
 
 clean:
-	rm parser.cpp parser.hpp parser tokens.cpp
+	rm parser.cpp parser.hpp rhythmc tokens.cpp
 
 force: clean all
 
@@ -13,5 +13,5 @@ parser.h: parser.cpp
 tokens.cpp: tokens.l parser.hpp
 	lex -o $@ $^
 
-parser: parser.cpp main.cpp tokens.cpp
+rhythmc: parser.cpp main.cpp tokens.cpp
 	g++-7 -o $@ *.cpp -std=c++17 -g3

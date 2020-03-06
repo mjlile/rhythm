@@ -1,6 +1,7 @@
 #include <iostream>
 #include "parse_tree.hpp"
 #include "print_tree.hpp"
+#include "interpreter.h"
 //#include "symbol_checker.hpp"
 //#include "code_gen.hpp"
 extern std::vector<Statement>* program;
@@ -12,7 +13,7 @@ int main(int argc, char **argv)
     yyparse();
     std::cout << program->size() << std::endl;
     std::cout << *program << std::endl;
-    std::cout << sizeof(program->at(0)) << std::endl;
+    interpret(*program);
 
 /*
     std::vector<std::string> undefined_symbols;
