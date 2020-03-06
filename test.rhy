@@ -1,14 +1,25 @@
-import x
-import Str
-Str y <- x+1*2-"ad"/1.23
-Int z
-return
-return x + y - z
-if x = 1 {
-    do_stuff
-    do_other_stuff
+let x : Int <- 10
+let y : Str <- x+1*2-8/2
+let z : Int <- 0
+
+println(z)
+if z {
+    println(z)
 }
 
-while z = y {
-    if y = 2 { sadsa }
+proc add (x : Int, y : Int) -> Int {
+    return x + y
 }
+
+if x {
+    z <- z + 1
+    println(x)
+}
+
+while x {
+    println(x)
+    x <- x - 1
+}
+
+println(y)
+println(z)

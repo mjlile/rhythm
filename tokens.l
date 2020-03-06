@@ -28,6 +28,7 @@ extern "C" int yywrap() { }
 
 [ \t\r]                   ;
 "import"                return make_token(TOKEN_IMPORT);
+"let"                   return make_token(TOKEN_LET);
 "return"                return make_token(TOKEN_RETURN);
 "if"                    return make_token(TOKEN_IF);
 "while"                 return make_token(TOKEN_WHILE);
@@ -51,6 +52,7 @@ extern "C" int yywrap() { }
 "}"                     return make_token(TOKEN_RBRACE);
 "["                     return make_token(TOKEN_LBRACK);
 "]"                     return make_token(TOKEN_RBRACK);
+":"                     return make_token(TOKEN_COLON);
 "<-"                    return make_token(TOKEN_LARROW);
 "->"                    return make_token(TOKEN_RARROW);
 "."                     return make_token(TOKEN_DOT);

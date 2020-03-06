@@ -52,17 +52,6 @@ private:
 };
 
 
-// get an optional value from the literal
-/*
-template<typename T, typename Node>
-T* value(const Node& node) {
-    if (std::holds_alternative<T*>(node.value)) {
-        return std::get<T*>(node.value);
-    }
-    return nullptr;
-}args.push_back
-
-
         /*-----------.
         | Statements |
         `-----------*/
