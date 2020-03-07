@@ -32,7 +32,7 @@ extern "C" int yywrap() { }
 "return"                return make_token(TOKEN_RETURN);
 "if"                    return make_token(TOKEN_IF);
 "while"                 return make_token(TOKEN_WHILE);
-"pro"                   return make_token(TOKEN_PROC);
+"proc"                  return make_token(TOKEN_PROC);
 "and"                   return make_token(TOKEN_AND);
 "or"                    return make_token(TOKEN_OR);
 [a-z][a-zA-Z0-9_]*      return make_token(TOKEN_IDENT);

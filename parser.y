@@ -131,6 +131,11 @@ invocation      : TOKEN_IDENT TOKEN_LPAREN expression TOKEN_RPAREN
                         delete $1;
                         delete $3;
                     }
+                | TOKEN_IDENT TOKEN_LPAREN TOKEN_RPAREN
+                    {
+                        $$ = new Invocation(*$1, {});
+                        delete $1;
+                    }
 
 declaration     : TOKEN_LET TOKEN_IDENT TOKEN_COLON TOKEN_TYPE
                     {
@@ -279,6 +284,7 @@ postfix         : primary
 
 primary         : literal { $$ = new Expression(*$1); delete $1; }
                 | TOKEN_IDENT { $$ = new Expression(*$1); delete $1; }
+                | invocation { $$ = new Expression(*$1); delete $1; }
                 | TOKEN_LPAREN expression TOKEN_RPAREN
                     {
                         $$ = operator_to_invocation($1, $2);

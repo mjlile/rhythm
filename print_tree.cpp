@@ -5,6 +5,7 @@ struct PrintLevel {
     friend std::ostream& operator<<(std::ostream& os, PrintLevel obj);
     int depth = 0;
 };
+std::ostream& operator<<(std::ostream& os, const Procedure& proc);
 
 std::ostream& operator<<(std::ostream& os, PrintLevel obj) {
     for (int i = 0; i < obj.depth; ++i) {
@@ -92,6 +93,20 @@ std::ostream& operator<<(std::ostream& os, const std::vector<Statement>& block) 
     for (const auto& stmt : block) {
         os << std::endl << print_level << stmt;
     }
+    --print_level.depth;
+
+    return os;
+}
+
+
+std::ostream& operator<<(std::ostream& os, const Procedure& proc) {
+    std::cout << "procedure: " << proc.name() << std::endl;
+    ++print_level.depth;
+    for (const auto& param : proc.parameters()) {
+        std::cout << print_level << param << std::endl;
+    }
+    std::cout << print_level << "returns: " <<  proc.return_type() << std::endl;
+    std::cout << print_level << proc.block() << std::endl;
     --print_level.depth;
 
     return os;
