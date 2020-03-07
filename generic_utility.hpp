@@ -1,6 +1,13 @@
 #pragma once
 #include <algorithm>
 
+template<typename T, typename V> // V is a variant with possible type T
+std::optional<T> get_opt(const V& variant) {
+    if (std::holds_alternative<T>(variant)) {
+        return std::get<T>(variant);
+    }
+    return std::nullopt;
+}
 
 template<typename I1, typename I2, typename BP> 
 // I1, I2 model InputIterator, BP models BinaryProcedure
