@@ -5,16 +5,6 @@
 #include <vector>
 #include <memory>
 
-namespace details {
-    template<typename T, typename V> // V is a variant with possible type T
-    std::optional<T> get_opt(const V& variant) {
-        if (std::holds_alternative<T>(variant)) {
-            return std::get<T>(variant);
-        }
-        return std::nullopt;
-    }
-}
-
         /*------------.
         | Expressions |
         `------------*/

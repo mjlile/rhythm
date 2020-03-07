@@ -13,6 +13,7 @@ bool savable_token(int t) {
 
 int make_token(int t) {
     if (savable_token(t)) {
+        // lex / yacc c interface, shouldn't new a std::string
         yylval.string = new std::string(yytext, yyleng);
     }
     else {
