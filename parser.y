@@ -41,6 +41,7 @@
     Expression* expression;
     Declaration* declaration;
     std::vector<Declaration>* parameters;
+    std::vector<Expression>* input;
     Import* import;
     Conditional* conditional;
     ConditionalLoop* conditional_loop;
@@ -64,6 +65,7 @@
 
 %type <token> or and eq relate add multiply pre post
 
+%type <input> expr_list
 %type <literal> literal 
 %type <expression> primary postfix prefix multiplicative additive relational 
 %type <expression> equality conjunction disjunction
@@ -125,7 +127,20 @@ statement       : expression { $$ = new Statement(*$1); }
                 | control
                 ;
 
-invocation      : TOKEN_IDENT TOKEN_LPAREN expression TOKEN_RPAREN
+expr_list       : expression
+                    {
+                        $$ = new std::vector<Expression>({*$1});
+                        delete $1;
+                    }
+                | expr_list TOKEN_COMMA expression
+                    {
+                        $$ = $1;
+                        $$->push_back(*$3);
+                        delete $3;
+                    }
+                ;
+
+invocation      : TOKEN_IDENT TOKEN_LPAREN expr_list TOKEN_RPAREN
                     {
                         $$ = new Invocation(*$1, {*$3});
                         delete $1;

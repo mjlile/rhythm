@@ -7,8 +7,13 @@ if z {
     println(z)
 }
 
-proc add () -> Int {
-    return 1
+proc power (let a : Int, let b : Int) -> Int {
+    let result : Int <- 1
+    while b {
+        result <- result * a
+        b <- b - 1
+    }
+    return result
 }
 
 if x {
@@ -25,6 +30,4 @@ while x {
 
 println(y)
 println(z)
-println(add())
-z <- y - add()
-println(z)
+println(power(y, 3))
