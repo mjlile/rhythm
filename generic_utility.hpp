@@ -1,6 +1,18 @@
 #pragma once
 #include <algorithm>
 
+
+template<typename I1, typename I2, typename BP> 
+// I1, I2 model InputIterator, BP models BinaryProcedure
+// pre: the range beginning with first two is no longer than [first1, limit1).
+//      proc takes arguments of type value_type(I1), value_type(I2)
+I2 for_each_together(I1 first1, I1 limit1, I2 first2, BP proc) {
+    while (first1 != limit1) {
+        proc(*first1++, *first2++);
+    }
+    return first2;
+}
+
 template<typename Container, typename Value>
 bool contains(const Container& c, const Value& v) {
     return std::find(std::begin(c), std::end(c), v) != std::end(c);
