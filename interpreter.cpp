@@ -1,4 +1,4 @@
-#include "interpreter.h"
+#include "interpreter.hpp"
 #include "generic_utility.hpp"
 #include <cassert>
 #include <unordered_map>

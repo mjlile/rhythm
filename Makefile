@@ -1,7 +1,7 @@
 all: rhythmc
 
 clean:
-	rm parser.cpp parser.hpp rhythmc tokens.cpp
+	rm parser.cpp parser.hpp parser.output rhythmc tokens.cpp
 
 force: clean all
 

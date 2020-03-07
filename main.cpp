@@ -1,7 +1,7 @@
 #include <iostream>
 #include "parse_tree.hpp"
 #include "print_tree.hpp"
-#include "interpreter.h"
+#include "interpreter.hpp"
 
 // bison (yacc) setup requires pointers, will change in the future
 extern std::vector<Statement>* program;
