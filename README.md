@@ -29,4 +29,4 @@ Clone the repo and build with the provided Makefile. `rhythmc` reads from standa
 git clone https://github.com/mjlile/Rhythm.git
 cd Rhythm
 make
-rhythmc < input.rhy > output.txt
+rhythmc < test.rhy
