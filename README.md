@@ -33,7 +33,7 @@ rhythmc < test.rhy
 ```
 ### Example
 #### Input
-```
+```c
 proc power (let a : Int, let b : Int) -> Int {
     let result : Int <- 1
     while b > 0 {
