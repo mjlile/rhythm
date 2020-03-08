@@ -21,6 +21,7 @@
         {TOKEN_GT, ">"},
         {TOKEN_GE, ">="},
         {TOKEN_LARROW, "<-"},
+        {TOKEN_PERCENT, "%"}
     };
 
     Expression* operator_to_invocation(int op_token, Expression* expr1, Expression* expr2 = nullptr) {
@@ -58,7 +59,7 @@
 %token <token> TOKEN_EOL TOKEN_EQ TOKEN_NE TOKEN_LT TOKEN_LE TOKEN_GT
 %token <token> TOKEN_GE TOKEN_LPAREN TOKEN_RPAREN TOKEN_LBRACE TOKEN_RBRACE
 %token <token> TOKEN_LBRACK TOKEN_RBRACK TOKEN_LARROW TOKEN_RARROW TOKEN_DOT TOKEN_COMMA
-%token <token> TOKEN_COLON TOKEN_BANG TOKEN_PLUS TOKEN_MINUS TOKEN_STAR TOKEN_SLASH
+%token <token> TOKEN_COLON TOKEN_BANG TOKEN_PLUS TOKEN_MINUS TOKEN_STAR TOKEN_SLASH TOKEN_PERCENT
 /* keywords */
 %token <token> TOKEN_RETURN TOKEN_IF TOKEN_WHILE TOKEN_DO
 %token <token> TOKEN_AND TOKEN_OR TOKEN_PROC TOKEN_IMPORT TOKEN_LET
@@ -85,7 +86,7 @@
 
 /* Operator precedence for mathematical operators */
 %left TOKEN_PLUS TOKEN_MINUS
-%left TOKEN_STAR TOKEN_SLASH
+%left TOKEN_STAR TOKEN_SLASH TOKEN_PERCENT
 
 %start program
 
@@ -313,7 +314,7 @@ and : TOKEN_AND;
 eq : TOKEN_EQ | TOKEN_NE;
 relate : TOKEN_LT | TOKEN_LE | TOKEN_GT | TOKEN_GE;
 add : TOKEN_PLUS | TOKEN_MINUS;
-multiply : TOKEN_STAR | TOKEN_SLASH;
+multiply : TOKEN_STAR | TOKEN_SLASH | TOKEN_PERCENT;
 pre : TOKEN_BANG | TOKEN_MINUS | TOKEN_STAR;
 post : TOKEN_DOT;
 

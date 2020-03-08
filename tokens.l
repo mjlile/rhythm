@@ -63,6 +63,7 @@ extern "C" int yywrap() { }
 "-"                     return make_token(TOKEN_MINUS);
 "*"                     return make_token(TOKEN_STAR);
 "/"                     return make_token(TOKEN_SLASH);
+"%"                     return make_token(TOKEN_PERCENT);
 "\n"                    return make_token(TOKEN_EOL);
 .                       std::cerr << "Unknown token: " << std::string(yytext, yyleng) << std::endl;
 

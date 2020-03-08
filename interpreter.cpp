@@ -10,7 +10,13 @@ const std::unordered_map<std::string, int(*)(int, int)> binary_ops =
         {"operator+", [](int a, int b) { return a + b; } },
         {"operator-", [](int a, int b) { return a - b; } },
         {"operator*", [](int a, int b) { return a * b; } },
-        {"operator/", [](int a, int b) { return a / b; } }
+        {"operator/", [](int a, int b) { return a / b; } },
+        {"operator>", [](int a, int b) { return int(a > b); } },
+        {"operator>=", [](int a, int b) { return int(a >= b); } },
+        {"operator<", [](int a, int b) { return int(a < b); } },
+        {"operator<=", [](int a, int b) { return int(a <= b); } },
+        {"operator=", [](int a, int b) { return int(a == b); } },
+        {"operator%", [](int a, int b) { return a % b; } },
     };
 std::unordered_map<std::string, const Procedure*> procedures;
 std::optional<int> return_register = std::nullopt;
