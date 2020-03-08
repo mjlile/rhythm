@@ -4,7 +4,7 @@ Rhythm is a very early work-in-progress language intended to promote [generic pr
 
 Current Status
 --------------
-This repo is only a very basic implementation of a simple programming language, with support for variables, procedures, and basic math operations. Rhythm code is broken down into an abstract syntax tree (AST) and interpreted with a basic tree walker, although Rhythm is intended to be a compiled language.
+This repo is only a very basic implementation, with support for integers, variables, procedures, and basic math operations. Rhythm code is broken down into an abstract syntax tree (AST) and interpreted with a basic tree walker, although Rhythm is intended to be a compiled language.
 
 ### Goals
 A non-exhaustive list of goals:
