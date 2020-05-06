@@ -153,17 +153,17 @@ invocation      : TOKEN_IDENT TOKEN_LPAREN expr_list TOKEN_RPAREN
                         delete $1;
                     }
 
-declaration     : TOKEN_LET TOKEN_IDENT TOKEN_COLON TOKEN_TYPE
+declaration     : TOKEN_IDENT TOKEN_TYPE
                     {
-                        $$ = new Declaration(*$4, *$2);
+                        $$ = new Declaration(*$2, *$1);
                         delete $2;
-                        delete $4;
+                        delete $1;
                     }
-                | TOKEN_LET TOKEN_IDENT TOKEN_COLON TOKEN_TYPE TOKEN_LARROW expression
+                | TOKEN_IDENT TOKEN_TYPE TOKEN_LARROW expression
                     {
-                        $$ = new Declaration(*$4, *$2, *$6);
-                        delete $6;
+                        $$ = new Declaration(*$2, *$1, *$4);
                         delete $2;
+                        delete $1;
                         delete $4;
                     }
                 ;
@@ -200,13 +200,13 @@ while_stmt      : TOKEN_WHILE expression TOKEN_LBRACE block TOKEN_RBRACE
                     }
                 ;
 
-procedure       : TOKEN_PROC TOKEN_IDENT parameters TOKEN_RARROW TOKEN_TYPE TOKEN_LBRACE block TOKEN_RBRACE
+procedure       : TOKEN_PROC TOKEN_IDENT parameters TOKEN_TYPE TOKEN_LBRACE block TOKEN_RBRACE
                     {
-                        $$ = new Procedure(*$2, *$3, *$5, *$7);
+                        $$ = new Procedure(*$2, *$3, *$4, *$6);
                         delete $2;
                         delete $3;
-                        delete $5;
-                        delete $7;
+                        delete $4;
+                        delete $6;
                     }
                 ;
 

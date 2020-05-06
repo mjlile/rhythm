@@ -1,28 +1,8 @@
-proc power (let a : Int, let b : Int) -> Int {
-    let result : Int <- 1
-    while b > 0 {
-        if b % 2 = 0 {
-            result <- result * result
-            b <- b / 2
-        }
-        if b % 2 = 1 {
-            result <- result * a
-            b <- b - 1
-        }
-    }
-    return result
+proc test(a Int) Int {
+    return a + 1
 }
 
-let x : Int <- 10
-let y : Str <- x+1*2-8/2
-let z : Int <- 0
-
-while x > 0 {
-    x <- x / 3
-    z <- z + 1
+proc main() Int {
+    test(1 + 2 * 8 / 2 * 99322389)
+    return 0
 }
-
-println(x)
-println(y)
-println(z)
-println(power(y, z))
