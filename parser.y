@@ -26,7 +26,7 @@
 
     Expression* operator_to_invocation(int op_token, Expression* expr1, Expression* expr2 = nullptr) {
         // C++ style operator__ e.g. operator+, operator()
-        std::string name = "operator" + op_to_string[op_token];
+        std::string name = op_to_string[op_token];
         std::vector<Expression> args;
         args.push_back(*expr1);
         if (expr2) {
