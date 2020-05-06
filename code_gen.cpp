@@ -134,9 +134,11 @@ llvm::Value* code_gen(const Procedure& proc) {
     if(redef_check && !redef_check->empty()) {	
         return error("function " + proc.name() + " redefined");	
     }	
-    // Make the function type:  int(int...) etc.	
+    // Make the function type:  int(int...) etc.
     std::vector<llvm::Type*> param_types(proc.parameters().size(), llvm::Type::getInt64Ty(context)); // TODO: types	
-    llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getInt64Ty(context), param_types, false); //TODO: types	
+    llvm::Type* ret_type = proc.return_type() == "void" ? 
+        llvm::Type::getVoidTy(context) : llvm::Type::getInt64Ty(context);
+    llvm::FunctionType* ft = llvm::FunctionType::get(ret_type, param_types, false); //TODO: types	
 
     llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, proc.name(), module.get());	
     std::cout << "created function " << proc.name() << std::endl;

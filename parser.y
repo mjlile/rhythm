@@ -208,6 +208,14 @@ procedure       : TOKEN_PROC TOKEN_IDENT parameters TOKEN_TYPE TOKEN_LBRACE bloc
                         delete $4;
                         delete $6;
                     }
+                | TOKEN_PROC TOKEN_IDENT parameters TOKEN_LBRACE block TOKEN_RBRACE
+                    {
+                        // void procedure
+                        $$ = new Procedure(*$2, *$3, "void", *$5);
+                        delete $2;
+                        delete $3;
+                        delete $5;
+                    }
                 ;
 
 parameters      : TOKEN_LPAREN TOKEN_RPAREN { $$ = new std::vector<Declaration>(); }
