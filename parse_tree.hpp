@@ -49,7 +49,7 @@ struct Statement;
 
 struct Declaration {
     Declaration(const std::string& type, const std::string& variable)
-              : type_m(type), variable_m(variable) {}
+              : type_m(type), variable_m(variable), initializer_m(std::nullopt) {}
     Declaration(const std::string& type, const std::string& variable,
                 const Expression& initializer)
               : type_m(type), variable_m(variable), initializer_m(initializer) {}
@@ -72,13 +72,19 @@ private:
 
 struct Conditional {
     // todo: move constructor for vector
-    Conditional(const Expression& condition, std::vector<Statement> block)
-              : condition_m(condition), block_m(block) {}
+    Conditional(const Expression& condition, const std::vector<Statement>& then_block)
+              : Conditional(condition, then_block, std::vector<Statement>()) {}
+    // TODO: else block parsing
+    Conditional(const Expression& condition, const std::vector<Statement>& then_block,
+                const std::vector<Statement>& else_block)
+              : condition_m(condition), then_m(then_block), else_m(else_block) {}
     const auto& condition() const { return condition_m; }
-    const auto& block()     const { return block_m; }
+    const auto& then_block()     const { return then_m; }
+    const auto& else_block()     const { return else_m; }
 private:
     Expression condition_m;
-    std::vector<Statement> block_m;
+    std::vector<Statement> then_m;
+    std::vector<Statement> else_m;
 };
 
 struct ConditionalLoop {

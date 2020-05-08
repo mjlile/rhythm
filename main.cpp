@@ -1,7 +1,7 @@
 #include <iostream>
 #include "parse_tree.hpp"
 #include "print_tree.hpp"
-#include "interpreter.hpp"
+#include "code_gen.hpp"
 
 // bison (yacc) setup requires pointers, will change in the future
 extern std::vector<Statement>* program;
@@ -16,5 +16,12 @@ int main(int argc, char **argv)
     std::cout << *program << std::endl;
     // TODO: symbol and type checking
     // run program with (very inefficient) abstract syntax tree walker
-    interpret(*program);
+    //interpret(*program);
+
+    llvm::Value* ir = code_gen(*program);
+    if (!ir) {
+        std::cerr << "failed to generate code" << std::endl;
+        return 1;
+    }
+    llvm::errs() << *module;
 }

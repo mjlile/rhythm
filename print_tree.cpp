@@ -71,7 +71,8 @@ std::ostream& operator<<(std::ostream& os, const Conditional& obj) {
     os << "condition";
     ++print_level.depth;
     os << std::endl << print_level << obj.condition();
-    os << std::endl << print_level << obj.block();
+    os << std::endl << print_level << obj.then_block();
+    os << std::endl << print_level << obj.else_block();
     --print_level.depth;
     return os;
 }
