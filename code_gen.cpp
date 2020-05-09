@@ -41,7 +41,7 @@ const std::map<std::string, std::function<llvm::Value* (llvm::Value*, llvm::Valu
 // TODO: type of var
 llvm::AllocaInst *CreateEntryBlockAlloca(llvm::Function* f, const std::string& var_name) {
     llvm::IRBuilder<> tmp_b(&f->getEntryBlock(), f->getEntryBlock().begin());
-    return tmp_b.CreateAlloca(llvm::Type::getInt32Ty(context), 0, var_name.c_str());
+    return tmp_b.CreateAlloca(llvm::Type::getInt64Ty(context), 0, var_name.c_str());
 }
 
 
@@ -79,7 +79,7 @@ llvm::Value* code_gen(const std::string& var_name) {
 
 llvm::Value* code_gen(const Invocation& invoc) {	
     // TODO: general invocations. currently binary built in ops
-    std::cout << "invocation of " << invoc.name() << std::endl;
+    std::cerr << "invocation of " << invoc.name() << std::endl;
 
     if (invoc.name() == "<-") {
         if (!std::holds_alternative<std::string>(invoc.args()[0].value())) {
@@ -123,7 +123,7 @@ llvm::Value* code_gen(const Invocation& invoc) {
 }
 
 llvm::Value* code_gen(const Declaration& decl) {
-    std::cout << "decl" << std::endl;
+    std::cerr << "decl" << std::endl;
     // TODO: allow shadowed variables from higher scopes
     if (named_values.find(decl.variable()) != named_values.end()) {
         return error("variable \"" + decl.variable() + "\" is already declared");
@@ -132,13 +132,13 @@ llvm::Value* code_gen(const Declaration& decl) {
 
     llvm::AllocaInst* alloc = CreateEntryBlockAlloca(f, decl.variable());
 
-    std::cout << "initializing" << std::endl;
+    std::cerr << "initializing" << std::endl;
     // store initializer, if applicable. otherwise, the value is undefined
     if (decl.initializer()) {
         llvm::Value* init_val = code_gen(*decl.initializer());
         builder.CreateStore(init_val, alloc);
     }
-    std::cout << "initialized" << std::endl;
+    std::cerr << "initialized" << std::endl;
 
     // update symbol table, saving old value to restore later
     // TODO: restore old value when this variable goes out of scope (e.g. shadowing)
@@ -148,7 +148,7 @@ llvm::Value* code_gen(const Declaration& decl) {
 }
 
 llvm::Value* code_gen(const Return& ret) {
-    std::cout << "return" <<std::endl;
+    std::cerr << "return" <<std::endl;
     if (ret.value()) {
         return builder.CreateRet(code_gen(*ret.value()));
     }
@@ -227,11 +227,49 @@ llvm::Value* code_gen(const Conditional& cond) {
     builder.SetInsertPoint(merge_block);
 
     // TODO: ?
-    return nullptr;
+    return merge_block;
 }
 
-llvm::Value* code_gen(const Procedure& proc) {	
-    std::cout << "proc" << std::endl;
+llvm::Value* code_gen(const ConditionalLoop& loop) {
+    llvm::Function* f = builder.GetInsertBlock()->getParent();
+
+    llvm::BasicBlock* cond_block = llvm::BasicBlock::Create(context, "cond", f);
+    llvm::BasicBlock* loop_block = llvm::BasicBlock::Create(context, "loop");
+    llvm::BasicBlock* cont_block = llvm::BasicBlock::Create(context, "loopcont");
+
+    builder.CreateBr(cond_block);
+    builder.SetInsertPoint(cond_block);
+
+    // emit condition block
+    llvm::Value* condition = code_gen(loop.conditional().condition());
+    if (!condition) {
+        return nullptr;
+    }
+
+    builder.CreateCondBr(condition, loop_block, cont_block);
+
+    // emit loop block
+    f->getBasicBlockList().push_back(loop_block);
+    builder.SetInsertPoint(loop_block);
+
+    if (!code_gen(loop.conditional().then_block())) {
+        return nullptr;
+    }
+
+    // always branch back to check the condition
+    builder.CreateBr(cond_block);
+
+    // continue code after while loop
+    f->getBasicBlockList().push_back(cont_block);
+    builder.SetInsertPoint(cont_block);
+
+    // TODO: ?
+    return cont_block;
+
+}
+
+llvm::Value* code_gen(const Procedure& proc) {
+    std::cerr << "proc" << std::endl;
     // check for function redefinition	
     // TODO: function hoisting?
     llvm::Function *redef_check = module->getFunction(proc.name());	
@@ -245,28 +283,30 @@ llvm::Value* code_gen(const Procedure& proc) {
     llvm::FunctionType* ft = llvm::FunctionType::get(ret_type, param_types, false); //TODO: types	
 
     llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, proc.name(), module.get());	
-    std::cout << "created function " << proc.name() << std::endl;
+    std::cerr << "created function " << proc.name() << std::endl;
 
     // Set names for all arguments
     for_each_together(
         f->args().begin(), f->args().end(),
         proc.parameters().begin(),
         [](auto& llvm_arg, const Declaration& arg) { 	
-            std::cout << arg.variable() << std::endl;
+            std::cerr << arg.variable() << std::endl;
             llvm_arg.setName(arg.variable());	
         }
     );
-    std::cout << "args done" << std::endl;
+    std::cerr << "args done" << std::endl;
 
     // Create a new basic block to start insertion into.	
     llvm::BasicBlock *bb = llvm::BasicBlock::Create(context, "entry", f);	
     builder.SetInsertPoint(bb);
 
     // allocate memory for parameters
-    named_values.clear();
     for (auto& arg : f->args()) {
         llvm::AllocaInst* alloc = CreateEntryBlockAlloca(f, arg.getName());
         builder.CreateStore(&arg, alloc);
+        if (named_values.find(arg.getName()) != named_values.end()) {
+            return error("variable " + std::string(arg.getName().str()) + " already defined");
+        }
         named_values[arg.getName()] = alloc;
     }
 
@@ -274,6 +314,11 @@ llvm::Value* code_gen(const Procedure& proc) {
         // Error reading body, remove function.	
         f->eraseFromParent();	
         return error("could not generate procedure " + proc.name());	
+    }
+	
+    // add implicit return at the end of void function
+    if (proc.return_type() == "void") {
+        builder.CreateRetVoid();
     }
 
     // Validate the generated code, checking for consistency.	
@@ -283,6 +328,6 @@ llvm::Value* code_gen(const Procedure& proc) {
 }
 
 llvm::Value* code_gen(const Statement& stmt) {
-    std::cout << "stmt" << std::endl;
+    std::cerr << "stmt" << std::endl;
     return std::visit([] (auto& x) { return code_gen(x); }, stmt.value());
 }
