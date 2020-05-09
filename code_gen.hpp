@@ -1,3 +1,6 @@
+#ifndef CODE_GEN_HPP
+#define CODE_GEN_HPP
+
 #include <memory>
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
@@ -19,3 +22,5 @@ llvm::Value* code_gen(const Return& ret);
 llvm::Value* code_gen(const Conditional& cond);
 llvm::Value* code_gen(const Procedure& proc);
 llvm::Value* code_gen(const Statement& stmt);
+
+#endif

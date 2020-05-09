@@ -1,3 +1,6 @@
+#ifndef TYPES_HPP
+#define TYPES_HPP
+
 #include <string>
 namespace type {
 
@@ -22,3 +25,5 @@ const std::string void0 = "Void";
 
 
 }
+
+#endif
