@@ -8,5 +8,11 @@ proc power (a Int, n Int) Int {
 }
 
 proc main() Int {
-    return power(2, 7)
+    n Int <- 10
+    if n = 10 {
+        n Int <- 2
+        n <- 3
+    }
+    a Int <- power(3, 3)
+    return a + n
 }
