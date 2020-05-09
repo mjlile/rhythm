@@ -95,7 +95,6 @@
 program         : block
                     {
                         program = $1;
-                        std::cout << "success" << std::endl;
                     }
                 ;
 

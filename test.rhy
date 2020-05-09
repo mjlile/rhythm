@@ -1,8 +1,12 @@
-proc test(a Int) Int {
-    return a + 1
+proc power (a Int, n Int) Int {
+    acc Int <- 1
+    while n > 0 {
+        acc <- acc * a
+        n <- n - 1
+    }
+    return acc
 }
 
 proc main() Int {
-    test(1 + 2 * 8 / 2 * 99322389)
-    return 0
+    return power(2, 7)
 }
