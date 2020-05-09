@@ -15,6 +15,7 @@
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Verifier.h"
 #include "parse_tree.hpp"
+#include "types.hpp"
 
 llvm::LLVMContext context;
 llvm::IRBuilder<> builder(context);
@@ -36,10 +37,33 @@ const std::map<std::string, std::function<llvm::Value* (llvm::Value*, llvm::Valu
     {">=", [](llvm::Value* l, llvm::Value* r) { return builder.CreateICmpSGE(l, r); } }
 };
 
+const std::map<std::string, llvm::Type*> types = {
+    // boolean is 1 byte, but llvm uses int1 TODO?
+    { type::boolean, llvm::Type::getInt8Ty   (context) },
+    // integer types
+    { type::integer, llvm::Type::getInt32Ty  (context) },
+    { type::int8,    llvm::Type::getInt8Ty   (context) },
+    { type::int16,   llvm::Type::getInt16Ty  (context) },
+    { type::int32,   llvm::Type::getInt32Ty  (context) },
+    { type::int64,   llvm::Type::getInt64Ty  (context) },
+    // natural number types
+    // llvm only distinguishes signed/unsigned for relevant operations
+    { type::natural, llvm::Type::getInt32Ty  (context) },
+    { type::nat8,    llvm::Type::getInt8Ty   (context) },
+    { type::nat16,   llvm::Type::getInt16Ty  (context) },
+    { type::nat32,   llvm::Type::getInt32Ty  (context) },
+    { type::nat64,   llvm::Type::getInt64Ty  (context) },
+    // floating point types
+    { type::float32, llvm::Type::getFloatTy  (context) },
+    { type::float64, llvm::Type::getDoubleTy (context) },
+
+    { type::void0,   llvm::Type::getVoidTy   (context) }
+};
+
 // create_entry_alloca - Create an alloca instruction in the entry block of
 // the function.  This is used for mutable variables etc.
 // TODO: type of var
-llvm::AllocaInst *CreateEntryBlockAlloca(llvm::Function* f, const std::string& var_name) {
+llvm::AllocaInst *create_entry_block_alloca(llvm::Function* f, const std::string& var_name) {
     llvm::IRBuilder<> tmp_b(&f->getEntryBlock(), f->getEntryBlock().begin());
     return tmp_b.CreateAlloca(llvm::Type::getInt64Ty(context), 0, var_name.c_str());
 }
@@ -130,7 +154,7 @@ llvm::Value* code_gen(const Declaration& decl) {
     }
     llvm::Function* f = builder.GetInsertBlock()->getParent();
 
-    llvm::AllocaInst* alloc = CreateEntryBlockAlloca(f, decl.variable());
+    llvm::AllocaInst* alloc = create_entry_block_alloca(f, decl.variable());
 
     std::cerr << "initializing" << std::endl;
     // store initializer, if applicable. otherwise, the value is undefined
@@ -302,7 +326,7 @@ llvm::Value* code_gen(const Procedure& proc) {
 
     // allocate memory for parameters
     for (auto& arg : f->args()) {
-        llvm::AllocaInst* alloc = CreateEntryBlockAlloca(f, arg.getName());
+        llvm::AllocaInst* alloc = create_entry_block_alloca(f, arg.getName());
         builder.CreateStore(&arg, alloc);
         if (named_values.find(arg.getName()) != named_values.end()) {
             return error("variable " + std::string(arg.getName().str()) + " already defined");
