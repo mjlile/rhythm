@@ -8,3 +8,6 @@ parser.exe.stackdump
 syntax.rhy
 llvm-project/
 *.temp
+*.0
+*.o
+rhythmc
