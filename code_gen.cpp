@@ -16,12 +16,14 @@
 #include "llvm/IR/Verifier.h"
 #include "parse_tree.hpp"
 #include "types.hpp"
+#include "symbol_table.hpp"
 
 llvm::LLVMContext context;
 llvm::IRBuilder<> builder(context);
 std::unique_ptr<llvm::Module> module = std::make_unique<llvm::Module>("rhythm", context);
 // TODO: add stack frames
-std::map<std::string, llvm::AllocaInst*> named_values;
+SymbolTable symbol_table;
+//std::map<std::string, llvm::AllocaInst*> named_values;
 
 // built in binary operations
 const std::map<std::string, std::function<llvm::Value* (llvm::Value*, llvm::Value*)>> binary_ops = {
@@ -92,7 +94,7 @@ std::vector<llvm::Value*> code_gen_args(const std::vector<Expression>& args) {
 
 llvm::Value* code_gen(const std::string& var_name) {
     // Look this variable up in the function.
-    llvm::Value *v = named_values[var_name];
+    llvm::Value *v = symbol_table.find(var_name);
     if (!v) {
         return error("unknown variable \"" + var_name + "\"");
     }
@@ -110,7 +112,7 @@ llvm::Value* code_gen(const Invocation& invoc) {
             return error("left-hand side of assignment must be a variable");
         }
         std::string var_name = std::get<std::string>(invoc.args()[0].value());
-        llvm::AllocaInst* var = named_values[var_name];
+        llvm::AllocaInst* var = symbol_table.find(var_name);
         if (!var) {
             return error("unknown variable " + var_name);
         }
@@ -127,6 +129,8 @@ llvm::Value* code_gen(const Invocation& invoc) {
         return it->second(l, r);
     }
 
+    std::cerr << "user  defined procedure" << std::endl;
+
     llvm::Function *callee = module->getFunction(invoc.name());	
     if (!callee) {	
         return error("call to unknown procedure " + invoc.name());	
@@ -135,22 +139,23 @@ llvm::Value* code_gen(const Invocation& invoc) {
         return error(invoc.name() + " requires " + std::to_string(callee->arg_size())
                            + " arguments, " + std::to_string(invoc.args().size()) + " given");	
     }	
-
+    std::cerr << "generate args..." << std::endl;
     auto arg_vals = code_gen_args(invoc.args());	
     if (auto it = std::find(arg_vals.begin(), arg_vals.end(), nullptr);
         it != arg_vals.end()) {	
         return error("bad argument in position " + std::to_string(it - arg_vals.begin())
              + " to procedure " + invoc.name());	
-    }	
+    }
 
+    std::cerr << "create call" << std::endl;
     return builder.CreateCall(callee, arg_vals, "calltmp");	
 }
 
 llvm::Value* code_gen(const Declaration& decl) {
     std::cerr << "decl" << std::endl;
     // TODO: allow shadowed variables from higher scopes
-    if (named_values.find(decl.variable()) != named_values.end()) {
-        return error("variable \"" + decl.variable() + "\" is already declared");
+    if (symbol_table.find_current_frame(decl.variable())) {
+        return error("variable \"" + decl.variable() + "\" is already declared in this scope");
     }
     llvm::Function* f = builder.GetInsertBlock()->getParent();
 
@@ -166,13 +171,12 @@ llvm::Value* code_gen(const Declaration& decl) {
 
     // update symbol table, saving old value to restore later
     // TODO: restore old value when this variable goes out of scope (e.g. shadowing)
-    llvm::AllocaInst* old = std::exchange(named_values[decl.variable()], alloc);
-    (void) old;
-    return named_values[decl.variable()];
+    symbol_table.add(decl.variable(), alloc);
+    return alloc;
 }
 
 llvm::Value* code_gen(const Return& ret) {
-    std::cerr << "return" <<std::endl;
+    std::cerr << "return" << std::endl;
     if (ret.value()) {
         return builder.CreateRet(code_gen(*ret.value()));
     }
@@ -199,6 +203,19 @@ I2 for_each_together(I1 first1, I1 limit1, I2 first2, F f) {
 // returns last statement value TODO: change?
 // TODO: should statements return a value at all?
 llvm::Value* code_gen(const std::vector<Statement>& stmts) {
+    symbol_table.push_frame();
+    llvm::Value* val;
+    for (const Statement& stmt : stmts) {
+        val = code_gen(stmt);
+        if (!val) {
+            return nullptr;	
+        }
+    }
+    symbol_table.pop_frame();
+    return val;
+}
+
+llvm::Value* code_gen_current_frame(const std::vector<Statement>& stmts) {
     llvm::Value* val;
     for (const Statement& stmt : stmts) {
         val = code_gen(stmt);
@@ -324,24 +341,28 @@ llvm::Value* code_gen(const Procedure& proc) {
     llvm::BasicBlock *bb = llvm::BasicBlock::Create(context, "entry", f);	
     builder.SetInsertPoint(bb);
 
+    // include parameters in stack frame
+    symbol_table.push_frame();
     // allocate memory for parameters
     for (auto& arg : f->args()) {
         llvm::AllocaInst* alloc = create_entry_block_alloca(f, arg.getName());
         builder.CreateStore(&arg, alloc);
-        if (named_values.find(arg.getName()) != named_values.end()) {
-            return error("variable " + std::string(arg.getName().str()) + " already defined");
+        if (symbol_table.find_current_frame(arg.getName().str())) {
+            return error("variable " + std::string(arg.getName().str()) + " already defined in this scope");
         }
-        named_values[arg.getName()] = alloc;
+        symbol_table.add(arg.getName(), alloc);
     }
 
-    if (!code_gen(proc.block())) {
+    if (!code_gen_current_frame(proc.block())) {
         // Error reading body, remove function.	
         f->eraseFromParent();	
         return error("could not generate procedure " + proc.name());	
     }
-	
+    std::cerr << "generated procedure body" << std::endl;
+    symbol_table.pop_frame();
+	std::cerr << "popped frame" << std::endl;
     // add implicit return at the end of void function
-    if (proc.return_type() == "void") {
+    if (proc.return_type() == type::void0) {
         builder.CreateRetVoid();
     }
 

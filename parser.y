@@ -5,6 +5,7 @@
     #include <map>
     #include "parse_tree.hpp"
     #include "parser.hpp"
+    #include "types.hpp"
     extern int yylex();
     int line_num = 1;
     void yyerror(const char *s) { printf("ERROR: %s (line %i)\n", s, line_num); }
@@ -210,7 +211,7 @@ procedure       : TOKEN_PROC TOKEN_IDENT parameters TOKEN_TYPE TOKEN_LBRACE bloc
                 | TOKEN_PROC TOKEN_IDENT parameters TOKEN_LBRACE block TOKEN_RBRACE
                     {
                         // void procedure
-                        $$ = new Procedure(*$2, *$3, "void", *$5);
+                        $$ = new Procedure(*$2, *$3, type::void0, *$5);
                         delete $2;
                         delete $3;
                         delete $5;

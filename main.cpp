@@ -13,7 +13,7 @@ int main(int argc, char **argv)
     // parse with bison (yacc)
     yyparse();
     // print program tree
-    std::cout << *program << std::endl;
+    //std::cout << *program << std::endl;
     // TODO: symbol and type checking
     // run program with (very inefficient) abstract syntax tree walker
     //interpret(*program);
@@ -23,5 +23,5 @@ int main(int argc, char **argv)
         std::cerr << "failed to generate code" << std::endl;
         return 1;
     }
-    llvm::errs() << *module;
+    llvm::outs() << *module;
 }
