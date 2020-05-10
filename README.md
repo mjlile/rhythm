@@ -4,7 +4,7 @@ Rhythm is a very early work-in-progress language intended to promote [generic pr
 
 Current Status
 --------------
-This repo is only a very basic implementation, with support for integers, variables, procedures, and basic math operations. Rhythm code is broken down into an abstract syntax tree (AST) and interpreted with a basic tree walker, although Rhythm is intended to be a compiled language.
+This repo is only a very basic implementation, with support for integers, variables, procedures, and basic math operations. Rhythm code is broken down into an abstract syntax tree (AST) and interpreted with a basic [tree walker](https://www.craftinginterpreters.com/a-tree-walk-interpreter.html), although Rhythm is intended to be a compiled language in the future.
 
 ### Goals
 A non-exhaustive list of goals:
@@ -21,7 +21,7 @@ Getting Started
 ---------------
 
 ### Prerequisites
-The current Rhythm implementation is written in [Flex](https://github.com/westes/flex/), [Bison](https://www.gnu.org/software/bison/), and C++17 for Linux systems. Flex is the GNU implementation of Lex, a lexer generator, while Bison comes from Yacc and is a parser generator.
+The current Rhythm implementation is written in [Flex](https://github.com/westes/flex/), [Bison](https://www.gnu.org/software/bison/), and [C++17](https://en.cppreference.com/w/cpp/17) for Linux systems. Flex is the GNU implementation of Lex, a lexer generator, while Bison comes from Yacc and is a parser generator.
 
 ### How to use
 Clone the repo and build with the provided Makefile. `rhythmc` reads from standard input and writes the AST and program outout to standard output.
