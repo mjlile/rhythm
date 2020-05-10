@@ -19,6 +19,10 @@ proc main() Int {
         n Int <- 2
         n <- 3
     }
+    putchar(ascii_digit(2))
+    putchar(94)
+    putchar(ascii_digit(3))
+    putchar(61)
     a Int <- power(2, 3)
     putchar(ascii_digit(a))
     putchar(newline)
