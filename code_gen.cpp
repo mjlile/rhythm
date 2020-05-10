@@ -67,7 +67,14 @@ const std::map<std::string, llvm::Type*> types = {
 // TODO: type of var
 llvm::AllocaInst *create_entry_block_alloca(llvm::Function* f, const std::string& var_name) {
     llvm::IRBuilder<> tmp_b(&f->getEntryBlock(), f->getEntryBlock().begin());
-    return tmp_b.CreateAlloca(llvm::Type::getInt64Ty(context), 0, var_name.c_str());
+    return tmp_b.CreateAlloca(llvm::Type::getInt32Ty(context), 0, var_name.c_str());
+}
+
+void cstdlib() {
+    std::vector<llvm::Type*> param_types ={llvm::Type::getInt32Ty(context)}; // TODO: types	
+    llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getInt32Ty(context), param_types, false); //TODO: types	
+
+    llvm::Function::Create(ft, llvm::Function::ExternalLinkage, "putchar", module.get());	
 }
 
 
@@ -80,7 +87,7 @@ llvm::Value *error(std::string_view str) {
 llvm::Value* code_gen(const Literal& lit) {
     // TODO: doubles and strings
     uint64_t val = atoi(lit.value().c_str());
-    llvm::Type* t = llvm::IntegerType::get (context, 64);
+    llvm::Type* t = llvm::IntegerType::get (context, 32);
     return llvm::ConstantInt::get(t, val, true);
 }
 
@@ -318,9 +325,9 @@ llvm::Value* code_gen(const Procedure& proc) {
         return error("function " + proc.name() + " redefined");	
     }	
     // Make the function type:  int(int...) etc.
-    std::vector<llvm::Type*> param_types(proc.parameters().size(), llvm::Type::getInt64Ty(context)); // TODO: types	
+    std::vector<llvm::Type*> param_types(proc.parameters().size(), llvm::Type::getInt32Ty(context)); // TODO: types	
     llvm::Type* ret_type = proc.return_type() == "void" ? 
-        llvm::Type::getVoidTy(context) : llvm::Type::getInt64Ty(context);
+        llvm::Type::getVoidTy(context) : llvm::Type::getInt32Ty(context);
     llvm::FunctionType* ft = llvm::FunctionType::get(ret_type, param_types, false); //TODO: types	
 
     llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, proc.name(), module.get());	

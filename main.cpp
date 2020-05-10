@@ -18,6 +18,7 @@ int main(int argc, char **argv)
     // run program with (very inefficient) abstract syntax tree walker
     //interpret(*program);
 
+    cstdlib();
     llvm::Value* ir = code_gen(*program);
     if (!ir) {
         std::cerr << "failed to generate code" << std::endl;

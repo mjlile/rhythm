@@ -11,6 +11,8 @@
 
 extern std::unique_ptr<llvm::Module> module;
 
+void cstdlib();
+
 llvm::Value* code_gen(const Literal& lit);
 llvm::Value* code_gen(const std::string& var_name);
 llvm::Value* code_gen(const Invocation& invoc);

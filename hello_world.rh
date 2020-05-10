@@ -1,0 +1,44 @@
+
+proc power (a Int, n Int) Int {
+    acc Int <- 1
+    while n > 0 {
+        acc <- acc * a
+        n <- n - 1
+    }
+    return acc
+}
+
+proc ascii_digit(n Int) Int {
+    return n + 48
+}
+
+proc main() Int {
+    newline Int <- 10
+    n Int <- 10
+    if n = 10 {
+        n Int <- 2
+        n <- 3
+    }
+    a Int <- power(2, 3)
+    putchar(ascii_digit(a))
+    putchar(newline)
+
+    putchar(104)
+    putchar(101)
+    putchar(108)
+    putchar(108)
+    putchar(111)
+    putchar(44)
+
+    putchar(32)
+
+    putchar(119)
+    putchar(111)
+    putchar(114)
+    putchar(108)
+    putchar(100)
+    putchar(33)
+
+    putchar(newline)
+    return a + n
+}
