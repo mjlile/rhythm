@@ -12,7 +12,7 @@ struct Expression;
 
 struct Literal {
     enum Type { string, integer, rational };
-    Literal(const std::string& value, Type t) : value_m(value) {}
+    Literal(const std::string& value, Type t) : value_m(value), type_m(t) {}
     const auto& value() const { return value_m; }
     Type        type()  const { return type_m; }
 private:
