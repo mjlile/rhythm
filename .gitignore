@@ -11,3 +11,5 @@ llvm-project/
 *.0
 *.o
 rhythmc
+syntax.rh
+test.rh

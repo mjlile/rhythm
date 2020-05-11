@@ -25,4 +25,5 @@ int main(int argc, char **argv)
         return 1;
     }
     llvm::outs() << *module;
+    llvm::verifyModule(*module, &llvm::errs());
 }

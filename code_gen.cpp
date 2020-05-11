@@ -26,7 +26,7 @@ SymbolTable symbol_table;
 //std::map<std::string, llvm::AllocaInst*> named_values;
 
 // built in binary operations
-const std::map<std::string, std::function<llvm::Value* (llvm::Value*, llvm::Value*)>> binary_ops = {
+std::map<const std::string, std::function<llvm::Value* (llvm::Value*, llvm::Value*)>> binary_ops = {
     {"+",  [](llvm::Value* l, llvm::Value* r) { return builder.CreateAdd    (l, r); } },
     {"-",  [](llvm::Value* l, llvm::Value* r) { return builder.CreateSub    (l, r); } },
     {"*",  [](llvm::Value* l, llvm::Value* r) { return builder.CreateMul    (l, r); } },
@@ -39,7 +39,7 @@ const std::map<std::string, std::function<llvm::Value* (llvm::Value*, llvm::Valu
     {">=", [](llvm::Value* l, llvm::Value* r) { return builder.CreateICmpSGE(l, r); } }
 };
 
-const std::map<std::string, llvm::Type*> types = {
+std::map<const std::string, llvm::Type*> types = {
     // boolean is 1 byte, but llvm uses int1 TODO?
     { type::boolean, llvm::Type::getInt8Ty   (context) },
     // integer types
@@ -71,10 +71,21 @@ llvm::AllocaInst *create_entry_block_alloca(llvm::Function* f, const std::string
 }
 
 void cstdlib() {
-    std::vector<llvm::Type*> param_types ={llvm::Type::getInt32Ty(context)}; // TODO: types	
-    llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getInt32Ty(context), param_types, false); //TODO: types	
+    std::vector<llvm::Type*> param_types;
+    llvm::FunctionType* ft;
+    llvm::Function* f;	
 
-    llvm::Function::Create(ft, llvm::Function::ExternalLinkage, "putchar", module.get());	
+    // putchar
+    param_types = { llvm::Type::getInt32Ty(context) };
+    ft = llvm::FunctionType::get(llvm::Type::getInt32Ty(context), param_types, false);
+    f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, "putchar", module.get());	
+    f->setCallingConv(llvm::CallingConv::C);
+
+    // printf
+    param_types = { llvm::Type::getInt8PtrTy(context) };
+    ft = llvm::FunctionType::get(llvm::Type::getInt32Ty(context), param_types, true);
+    f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, "printf", module.get());	
+    f->setCallingConv(llvm::CallingConv::C);
 }
 
 
@@ -83,12 +94,36 @@ llvm::Value *error(std::string_view str) {
     return nullptr;
 }
 
+llvm::Value* constant_num(int n) {
+    return code_gen(Literal(std::to_string(n), Literal::Type::integer));
+}
 
 llvm::Value* code_gen(const Literal& lit) {
-    // TODO: doubles and strings
-    uint64_t val = atoi(lit.value().c_str());
-    llvm::Type* t = llvm::IntegerType::get (context, 32);
-    return llvm::ConstantInt::get(t, val, true);
+    // TODO: typeless literals from Go 
+    switch (lit.type()) {
+    case Literal::Type::string:
+    {
+        //auto str = llvm::ConstantDataArray::getString(context, lit.value(), true);
+        // TODO: non-null terminated strings
+        //return builder.CreateInBoundsGEP(str, llvm::ArrayRef<llvm::Value*>(constant_num(0)));
+        std::cerr << lit.value() << std::endl;
+        return llvm::ConstantExpr::getBitCast(builder.CreateGlobalString(lit.value(), ".str"), llvm::Type::getInt8PtrTy(context));
+        /*
+        return llvm::ConstantExpr::getInBoundsGetElementPtr(
+            //llvm::Type::getInt8PtrTy(context),
+            llvm::Type::getInt8Ty(context),
+            //str->getType()->getElementType(),
+            str,
+            constant_num(1));
+            */
+    }
+    case Literal::Type::integer:
+        // TODO: hex literals
+        return llvm::ConstantInt::get(static_cast<llvm::IntegerType*>(types[type::integer]), lit.value(), 10);
+    case Literal::Type::rational:
+        return llvm::ConstantFP::get(types[type::float64], lit.value());
+    }
+    return error("invalid literal type");
 }
 
 std::vector<llvm::Value*> code_gen_args(const std::vector<Expression>& args) {	
@@ -142,10 +177,16 @@ llvm::Value* code_gen(const Invocation& invoc) {
     if (!callee) {	
         return error("call to unknown procedure " + invoc.name());	
     }	
-    if (callee->arg_size() != invoc.args().size()) {	
+    // correct number of parameters
+    if (!callee->isVarArg() && callee->arg_size() != invoc.args().size()) {	
         return error(invoc.name() + " requires " + std::to_string(callee->arg_size())
-                           + " arguments, " + std::to_string(invoc.args().size()) + " given");	
+            + " parameters, " + std::to_string(invoc.args().size()) + " given");	
     }	
+    if (callee->isVarArg() && callee->arg_size() > invoc.args().size()) {
+        return error(invoc.name() + " requires at least" + std::to_string(callee->arg_size())
+            + " parameters, " + std::to_string(invoc.args().size()) + " given");	
+    }
+
     std::cerr << "generate args..." << std::endl;
     auto arg_vals = code_gen_args(invoc.args());	
     if (auto it = std::find(arg_vals.begin(), arg_vals.end(), nullptr);
@@ -374,7 +415,7 @@ llvm::Value* code_gen(const Procedure& proc) {
     }
 
     // Validate the generated code, checking for consistency.	
-    llvm::verifyFunction(*f);	
+    llvm::verifyFunction(*f, &llvm::errs());	
 
     return f;	
 }
