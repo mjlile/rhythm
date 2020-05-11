@@ -42,7 +42,8 @@ Clone the repo and build with the provided Makefile. `rhythmc` reads from standa
 git clone https://github.com/mjlile/Rhythm.git
 cd Rhythm
 make
-rhythmc < hello_world.rh | lli
+./rhythmc.sh hello_world.rh -o hello
+./hello
 ```
 ### Example
 #### Input
