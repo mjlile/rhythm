@@ -63,8 +63,6 @@ proc power (a Int, n Int) Int {
 }
 
 proc main() Int {
-    newline Int <- 10
-
     printf("hello world!\n")
     printf("2^11 = %d\n", power(2, 11))
 
