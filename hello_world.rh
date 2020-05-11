@@ -1,7 +1,23 @@
+proc power (a Int, n Int) Int {
+    acc Int <- 1
+
+    while n > 0 {
+        if n % 2 = 1 {
+            acc <- a * acc
+        }
+
+        a <- a * a
+        n <- n / 2
+    }
+
+    return acc
+}
+
 proc main() Int {
     newline Int <- 10
 
     printf("hello world!\n")
+    printf("2^11 = %d\n", power(2, 11))
 
     return 0
 }

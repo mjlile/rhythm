@@ -1,162 +1,79 @@
 Rhythm Programming Language
 ===========================
-Rhythm is a very early work-in-progress language intended to promote [generic programming](https://www.youtube.com/watch?v=iwJpxWHuZQY), primarily inspired by the works of [Alex Stepanov](http://stepanovpapers.com/), namely the C++ standard template library (STL) and the book [Elements of Programming](http://elementsofprogramming.com/)
+Rhythm is a very early work-in-progress language intended to promote [generic programming](https://www.youtube.com/watch?v=iwJpxWHuZQY), primarily inspired by the works of [Alex Stepanov](http://stepanovpapers.com/), namely the C++ standard template library (STL) and the book [Elements of Programming](http://elementsofprogramming.com/).
 
 Current Status
 --------------
-This repo is only a very basic implementation, with support for integers, variables, procedures, and basic math operations. Rhythm code is broken down into an abstract syntax tree (AST) and interpreted with a basic [tree walker](https://www.craftinginterpreters.com/a-tree-walk-interpreter.html), although Rhythm is intended to be a compiled language in the future.
+This repo is only a very basic implementation at the moment. The only supported types are 32 bit signed integers and string literals. Rhythm code is compiled to [LLVM](https://llvm.org/) IR, which can then be passed into `clang` for native compilation.
 
 ### Goals
-A non-exhaustive list of goals:
-* Structures / classes
-* Generics & concepts
-* Strong type checking
-* Standard library
-* Algebraic data types
-* Native compilation using [LLVM](https://llvm.org/)
-* Descriptive yet concise error messages
-* Documentation for the language itself
+A non-exhaustive list of goals
+
+#### Basics
+* Documentation
+* Better error messages
+* Other primitive types (e.g. floating point numbers)
+* C-style structs
+
+#### Generic Programming Features
+* First-class iterator support
+* Generic functions
+* Generic structs
+* Concepts
+* Pointer to concept (runtime generics)
+
+
+#### Other Nice Features
+These are interesting features from other languages that I would want in my ideal language, but they aren't at the core of what I want Rhythm to be.
+* Large standard library
+* Algebraic data types (e.g. Rust's enum types, optional)
+* Concurrency (async/await coroutines + Go-style channel communication)
+* Ownership (e.g. Rust)
 
 Getting Started
 ---------------
 
 ### Prerequisites
-The current Rhythm implementation is written in [Flex](https://github.com/westes/flex/), [Bison](https://www.gnu.org/software/bison/), and [C++17](https://en.cppreference.com/w/cpp/17) for Linux systems. Flex is the GNU implementation of Lex, a lexer generator, while Bison comes from Yacc and is a parser generator.
+The current Rhythm implementation is written in [Flex](https://github.com/westes/flex/), [Bison](https://www.gnu.org/software/bison/), and [C++17](https://en.cppreference.com/w/cpp/17) for Linux systems. Flex is the GNU implementation of Lex, a lexer generator, while Bison comes from Yacc and is a parser generator. [Clang](https://clang.llvm.org/) is required to compile the LLVM IR to machine code.
 
 ### How to use
-Clone the repo and build with the provided Makefile. `rhythmc` reads from standard input and writes the AST and program outout to standard output.
+Clone the repo and build with the provided Makefile. `rhythmc` reads from standard input and writes LLVM IR to standard output. This can be piped into the LLVM interpreter (`lli`) or `clang` with IR input mode. `rhythmc.sh` reads from the file in the first parameter and compiles a native binary (optionally to the file specificed after `-o`).
 ```
 git clone https://github.com/mjlile/Rhythm.git
 cd Rhythm
 make
-rhythmc < test.rhy
+rhythmc < hello_world.rh | lli
 ```
 ### Example
 #### Input
 ```c
-proc power (let a : Int, let b : Int) -> Int {
-    let result : Int <- 1
-    while b > 0 {
-        if b % 2 = 0 {
-            result <- result * result
-            b <- b / 2
+proc power (a Int, n Int) Int {
+    acc Int <- 1
+
+    while n > 0 {
+        if n % 2 = 1 {
+            acc <- a * acc
         }
-        if b % 2 = 1 {
-            result <- result * a
-            b <- b - 1
-        }
+
+        a <- a * a
+        n <- n / 2
     }
-    return result
+
+    return acc
 }
 
-let x : Int <- 10
-let y : Str <- x+1*2-8/2
-let z : Int <- 0
+proc main() Int {
+    newline Int <- 10
 
-while x > 0 {
-    x <- x / 3
-    z <- z + 1
+    printf("hello world!\n")
+    printf("2^11 = %d\n", power(2, 11))
+
+    return 0
 }
 
-println(x)
-println(y)
-println(z)
-println(power(y, z))
 ```
 #### Output
 ```
-success
-block
-.   procedure: power
-.   .   Int a
-.   .   Int b
-.   .   returns: Int
-.   .   block
-.   .   .   Int result
-.   .   .   .   literal: 1
-.   .   .   loop condition
-.   .   .   .   invocation: operator>
-.   .   .   .   .   b
-.   .   .   .   .   literal: 0
-.   .   .   .   block
-.   .   .   .   .   condition
-.   .   .   .   .   .   invocation: operator=
-.   .   .   .   .   .   .   invocation: operator%
-.   .   .   .   .   .   .   .   b
-.   .   .   .   .   .   .   .   literal: 2
-.   .   .   .   .   .   .   literal: 0
-.   .   .   .   .   .   block
-.   .   .   .   .   .   .   invocation: operator<-
-.   .   .   .   .   .   .   .   result
-.   .   .   .   .   .   .   .   invocation: operator*
-.   .   .   .   .   .   .   .   .   result
-.   .   .   .   .   .   .   .   .   result
-.   .   .   .   .   .   .   invocation: operator<-
-.   .   .   .   .   .   .   .   b
-.   .   .   .   .   .   .   .   invocation: operator/
-.   .   .   .   .   .   .   .   .   b
-.   .   .   .   .   .   .   .   .   literal: 2
-.   .   .   .   .   condition
-.   .   .   .   .   .   invocation: operator=
-.   .   .   .   .   .   .   invocation: operator%
-.   .   .   .   .   .   .   .   b
-.   .   .   .   .   .   .   .   literal: 2
-.   .   .   .   .   .   .   literal: 1
-.   .   .   .   .   .   block
-.   .   .   .   .   .   .   invocation: operator<-
-.   .   .   .   .   .   .   .   result
-.   .   .   .   .   .   .   .   invocation: operator*
-.   .   .   .   .   .   .   .   .   result
-.   .   .   .   .   .   .   .   .   a
-.   .   .   .   .   .   .   invocation: operator<-
-.   .   .   .   .   .   .   .   b
-.   .   .   .   .   .   .   .   invocation: operator-
-.   .   .   .   .   .   .   .   .   b
-.   .   .   .   .   .   .   .   .   literal: 1
-.   .   .   return
-.   .   .   .   result
-
-.   Int x
-.   .   literal: 10
-.   Str y
-.   .   invocation: operator-
-.   .   .   invocation: operator+
-.   .   .   .   x
-.   .   .   .   invocation: operator*
-.   .   .   .   .   literal: 1
-.   .   .   .   .   literal: 2
-.   .   .   invocation: operator/
-.   .   .   .   literal: 8
-.   .   .   .   literal: 2
-.   Int z
-.   .   literal: 0
-.   loop condition
-.   .   invocation: operator>
-.   .   .   x
-.   .   .   literal: 0
-.   .   block
-.   .   .   invocation: operator<-
-.   .   .   .   x
-.   .   .   .   invocation: operator/
-.   .   .   .   .   x
-.   .   .   .   .   literal: 3
-.   .   .   invocation: operator<-
-.   .   .   .   z
-.   .   .   .   invocation: operator+
-.   .   .   .   .   z
-.   .   .   .   .   literal: 1
-.   invocation: println
-.   .   x
-.   invocation: println
-.   .   y
-.   invocation: println
-.   .   z
-.   invocation: println
-.   .   invocation: power
-.   .   .   y
-.   .   .   z
-0
-8
-3
-512
+hello world!
+2^11 = 2048
 ```
