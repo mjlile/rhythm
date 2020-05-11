@@ -31,6 +31,7 @@ std::map<const std::string, std::function<llvm::Value* (llvm::Value*, llvm::Valu
     {"-",  [](llvm::Value* l, llvm::Value* r) { return builder.CreateSub    (l, r); } },
     {"*",  [](llvm::Value* l, llvm::Value* r) { return builder.CreateMul    (l, r); } },
     {"/",  [](llvm::Value* l, llvm::Value* r) { return builder.CreateSDiv   (l, r); } },
+    {"%",  [](llvm::Value* l, llvm::Value* r) { return builder.CreateSRem   (l, r); } },
     {"=",  [](llvm::Value* l, llvm::Value* r) { return builder.CreateICmpEQ (l, r); } },
     {"!=", [](llvm::Value* l, llvm::Value* r) { return builder.CreateICmpNE (l, r); } },
     {"<",  [](llvm::Value* l, llvm::Value* r) { return builder.CreateICmpSLT(l, r); } },
@@ -229,11 +230,12 @@ I2 for_each_together(I1 first1, I1 limit1, I2 first2, F f) {
 // TODO: should statements return a value at all?
 llvm::Value* code_gen(const std::vector<Statement>& stmts) {
     symbol_table.push_frame();
-    llvm::Value* val;
+    // TODO
+    llvm::Value* val = constant_num(0);
     for (const Statement& stmt : stmts) {
         val = code_gen(stmt);
         if (!val) {
-            return nullptr;	
+            return error("bad statement in body");	
         }
     }
     symbol_table.pop_frame();
@@ -245,7 +247,7 @@ llvm::Value* code_gen_current_frame(const std::vector<Statement>& stmts) {
     for (const Statement& stmt : stmts) {
         val = code_gen(stmt);
         if (!val) {
-            return nullptr;	
+            return error("bad statement in body");	
         }
     }
     return val;
@@ -254,7 +256,7 @@ llvm::Value* code_gen_current_frame(const std::vector<Statement>& stmts) {
 llvm::Value* code_gen(const Conditional& cond) {
     llvm::Value* condition = code_gen(cond.condition());
     if (!condition) {
-        return nullptr;
+        return error("bad condition");
     }
 
     llvm::Function* f = builder.GetInsertBlock()->getParent();
@@ -268,7 +270,7 @@ llvm::Value* code_gen(const Conditional& cond) {
     builder.SetInsertPoint(then_block);
 
     if (!code_gen(cond.then_block())) {
-        return nullptr;
+        return error("bad then block");
     }
 
     builder.CreateBr(merge_block);
@@ -281,7 +283,7 @@ llvm::Value* code_gen(const Conditional& cond) {
     builder.SetInsertPoint(else_block);
     
     if (!code_gen(cond.else_block())) {
-        return nullptr;
+        return error("bad else block");
     }
 
     builder.CreateBr(merge_block);
@@ -309,7 +311,7 @@ llvm::Value* code_gen(const ConditionalLoop& loop) {
     // emit condition block
     llvm::Value* condition = code_gen(loop.conditional().condition());
     if (!condition) {
-        return nullptr;
+        return error("bad condition");
     }
 
     builder.CreateCondBr(condition, loop_block, cont_block);
@@ -319,7 +321,7 @@ llvm::Value* code_gen(const ConditionalLoop& loop) {
     builder.SetInsertPoint(loop_block);
 
     if (!code_gen(loop.conditional().then_block())) {
-        return nullptr;
+        return error("bad while loop body");
     }
 
     // always branch back to check the condition
