@@ -12,7 +12,16 @@ struct Expression;
 
 struct Literal {
     enum Type { string, integer, rational };
-    Literal(const std::string& value, Type t) : value_m(value), type_m(t) {}
+    Literal(const std::string& value, Type t) : value_m(value), type_m(t) {
+        if (t == Type::string) {
+            // TODO: add other escape sequences
+            size_t i = value_m.find("\\n"); 
+            while (i != std::string::npos) {
+                value_m.replace(i, 2, "\n");
+                i = value_m.find("\\n"); 
+            }
+        }
+    }
     const auto& value() const { return value_m; }
     Type        type()  const { return type_m; }
 private:
