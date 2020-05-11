@@ -23,4 +23,4 @@ then
     output="-o $3"
 fi
 
-./rhythmc < $1 2> /dev/null | clang -x ir - -Wno-override-module $output
+./rhythmc < $1 | clang -x ir - -Wno-override-module $output

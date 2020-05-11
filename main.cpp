@@ -12,14 +12,13 @@ int main(int argc, char **argv)
 {
     // parse with bison (yacc)
     yyparse();
-    // print program tree
-    //std::cout << *program << std::endl;
-    // TODO: symbol and type checking
-    // run program with (very inefficient) abstract syntax tree walker
-    //interpret(*program);
 
+    // declare some c functions (e.g. printf)
     cstdlib();
+
+    // generate LLVM IR
     llvm::Value* ir = code_gen(*program);
+
     if (!ir) {
         std::cerr << "failed to generate code" << std::endl;
         return 1;

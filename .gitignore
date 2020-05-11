@@ -13,3 +13,4 @@ llvm-project/
 rhythmc
 syntax.rh
 test.rh
+*.out

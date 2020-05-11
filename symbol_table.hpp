@@ -9,11 +9,9 @@
 struct SymbolTable {
     void push_frame() {
         table.emplace_back();
-        std::cerr << "pushing frame #" << table.size() << std::endl;
     }
 
     void pop_frame() {
-        std::cerr << "popping frame #" << table.size() << std::endl;
         table.pop_back();
     }
 

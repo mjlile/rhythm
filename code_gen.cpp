@@ -102,24 +102,12 @@ llvm::Value* code_gen(const Literal& lit) {
     // TODO: typeless literals from Go 
     switch (lit.type()) {
     case Literal::Type::string:
-    {
-        //auto str = llvm::ConstantDataArray::getString(context, lit.value(), true);
-        // TODO: non-null terminated strings
-        //return builder.CreateInBoundsGEP(str, llvm::ArrayRef<llvm::Value*>(constant_num(0)));
-        std::cerr << lit.value() << std::endl;
-        return llvm::ConstantExpr::getBitCast(builder.CreateGlobalString(lit.value(), ".str"), llvm::Type::getInt8PtrTy(context));
-        /*
-        return llvm::ConstantExpr::getInBoundsGetElementPtr(
-            //llvm::Type::getInt8PtrTy(context),
-            llvm::Type::getInt8Ty(context),
-            //str->getType()->getElementType(),
-            str,
-            constant_num(1));
-            */
-    }
+        return llvm::ConstantExpr::getBitCast(builder.CreateGlobalString(lit.value(), ".str"),
+            llvm::Type::getInt8PtrTy(context));
     case Literal::Type::integer:
         // TODO: hex literals
-        return llvm::ConstantInt::get(static_cast<llvm::IntegerType*>(types[type::integer]), lit.value(), 10);
+        return llvm::ConstantInt::get(static_cast<llvm::IntegerType*>(types[type::integer]),
+            lit.value(), 10);
     case Literal::Type::rational:
         return llvm::ConstantFP::get(types[type::float64], lit.value());
     }
@@ -146,9 +134,7 @@ llvm::Value* code_gen(const std::string& var_name) {
 }
 
 llvm::Value* code_gen(const Invocation& invoc) {	
-    // TODO: general invocations. currently binary built in ops
-    std::cerr << "invocation of " << invoc.name() << std::endl;
-
+    // assignment must be handles uniquely
     if (invoc.name() == "<-") {
         if (!std::holds_alternative<std::string>(invoc.args()[0].value())) {
             return error("left-hand side of assignment must be a variable");
@@ -171,8 +157,6 @@ llvm::Value* code_gen(const Invocation& invoc) {
         return it->second(l, r);
     }
 
-    std::cerr << "user  defined procedure" << std::endl;
-
     llvm::Function *callee = module->getFunction(invoc.name());	
     if (!callee) {	
         return error("call to unknown procedure " + invoc.name());	
@@ -187,7 +171,7 @@ llvm::Value* code_gen(const Invocation& invoc) {
             + " parameters, " + std::to_string(invoc.args().size()) + " given");	
     }
 
-    std::cerr << "generate args..." << std::endl;
+
     auto arg_vals = code_gen_args(invoc.args());	
     if (auto it = std::find(arg_vals.begin(), arg_vals.end(), nullptr);
         it != arg_vals.end()) {	
@@ -195,13 +179,10 @@ llvm::Value* code_gen(const Invocation& invoc) {
              + " to procedure " + invoc.name());	
     }
 
-    std::cerr << "create call" << std::endl;
     return builder.CreateCall(callee, arg_vals, "calltmp");	
 }
 
 llvm::Value* code_gen(const Declaration& decl) {
-    std::cerr << "decl" << std::endl;
-    // TODO: allow shadowed variables from higher scopes
     if (symbol_table.find_current_frame(decl.variable())) {
         return error("variable \"" + decl.variable() + "\" is already declared in this scope");
     }
@@ -209,22 +190,18 @@ llvm::Value* code_gen(const Declaration& decl) {
 
     llvm::AllocaInst* alloc = create_entry_block_alloca(f, decl.variable());
 
-    std::cerr << "initializing" << std::endl;
     // store initializer, if applicable. otherwise, the value is undefined
     if (decl.initializer()) {
         llvm::Value* init_val = code_gen(*decl.initializer());
         builder.CreateStore(init_val, alloc);
     }
-    std::cerr << "initialized" << std::endl;
 
-    // update symbol table, saving old value to restore later
-    // TODO: restore old value when this variable goes out of scope (e.g. shadowing)
     symbol_table.add(decl.variable(), alloc);
+
     return alloc;
 }
 
 llvm::Value* code_gen(const Return& ret) {
-    std::cerr << "return" << std::endl;
     if (ret.value()) {
         return builder.CreateRet(code_gen(*ret.value()));
     }
@@ -358,7 +335,6 @@ llvm::Value* code_gen(const ConditionalLoop& loop) {
 }
 
 llvm::Value* code_gen(const Procedure& proc) {
-    std::cerr << "proc" << std::endl;
     // check for function redefinition	
     // TODO: function hoisting?
     llvm::Function *redef_check = module->getFunction(proc.name());	
@@ -372,18 +348,15 @@ llvm::Value* code_gen(const Procedure& proc) {
     llvm::FunctionType* ft = llvm::FunctionType::get(ret_type, param_types, false); //TODO: types	
 
     llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, proc.name(), module.get());	
-    std::cerr << "created function " << proc.name() << std::endl;
 
     // Set names for all arguments
     for_each_together(
         f->args().begin(), f->args().end(),
         proc.parameters().begin(),
         [](auto& llvm_arg, const Declaration& arg) { 	
-            std::cerr << arg.variable() << std::endl;
             llvm_arg.setName(arg.variable());	
         }
     );
-    std::cerr << "args done" << std::endl;
 
     // Create a new basic block to start insertion into.	
     llvm::BasicBlock *bb = llvm::BasicBlock::Create(context, "entry", f);	
@@ -406,9 +379,8 @@ llvm::Value* code_gen(const Procedure& proc) {
         f->eraseFromParent();	
         return error("could not generate procedure " + proc.name());	
     }
-    std::cerr << "generated procedure body" << std::endl;
     symbol_table.pop_frame();
-	std::cerr << "popped frame" << std::endl;
+
     // add implicit return at the end of void function
     if (proc.return_type() == type::void0) {
         builder.CreateRetVoid();
@@ -421,6 +393,5 @@ llvm::Value* code_gen(const Procedure& proc) {
 }
 
 llvm::Value* code_gen(const Statement& stmt) {
-    std::cerr << "stmt" << std::endl;
     return std::visit([] (auto& x) { return code_gen(x); }, stmt.value());
 }
