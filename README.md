@@ -7,7 +7,7 @@ Current Status
 This repo is only a very basic implementation at the moment. The only supported types are 32 bit signed integers and string literals. Rhythm code is compiled to [LLVM](https://llvm.org/) IR, which can then be passed into `clang` for native compilation.
 
 ### Goals
-A non-exhaustive list of goals
+A non-exhaustive list of goals in different areas
 
 #### Basics
 * Documentation
@@ -17,11 +17,11 @@ A non-exhaustive list of goals
 
 #### Generic Programming Features
 * First-class iterator support
-* Generic functions
+* Generic procedures
 * Generic structs
+* Type functions
 * Concepts
-* Pointer to concept (runtime generics)
-
+* Pointers to concepts (runtime generics)
 
 #### Other Nice Features
 These are interesting features from other languages that I would want in my ideal language, but they aren't at the core of what I want Rhythm to be.
