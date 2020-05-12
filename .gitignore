@@ -14,3 +14,4 @@ rhythmc
 syntax.rh
 test.rh
 *.out
+*.ll

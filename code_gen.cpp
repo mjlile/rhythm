@@ -74,12 +74,12 @@ llvm::AllocaInst *create_entry_block_alloca(llvm::Function* f, const std::string
 void cstdlib() {
     std::vector<llvm::Type*> param_types;
     llvm::FunctionType* ft;
-    llvm::Function* f;	
+    llvm::Function* f;
 
-    // putchar
-    param_types = { llvm::Type::getInt32Ty(context) };
-    ft = llvm::FunctionType::get(llvm::Type::getInt32Ty(context), param_types, false);
-    f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, "putchar", module.get());	
+    // scanf
+    param_types = { llvm::Type::getInt8PtrTy(context) };
+    ft = llvm::FunctionType::get(llvm::Type::getInt32Ty(context), param_types, true);
+    f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, "scanf", module.get());	
     f->setCallingConv(llvm::CallingConv::C);
 
     // printf
