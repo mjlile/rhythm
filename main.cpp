@@ -4,7 +4,7 @@
 #include "code_gen.hpp"
 
 // bison (yacc) setup requires pointers, will change in the future
-extern std::vector<Statement>* program;
+extern Block* program;
 extern int yyparse();
 
 

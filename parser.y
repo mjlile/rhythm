@@ -9,7 +9,7 @@
     extern int yylex();
     int line_num = 1;
     void yyerror(const char *s) { printf("ERROR: %s (line %i)\n", s, line_num); }
-    std::vector<Statement>* program;
+    Block* program;
 
     std::map<int, std::string> op_to_string = {
         {TOKEN_PLUS, "+"},
@@ -46,11 +46,11 @@
     std::vector<Expression>* input;
     Import* import;
     Conditional* conditional;
-    ConditionalLoop* conditional_loop;
+    WhileLoop* while_loop;
     Procedure* procedure;
     Return* return_stmt;
     Statement* statement;
-    std::vector<Statement>* block;
+    Block* block;
     std::string* string;
     int token;
 }
@@ -77,13 +77,13 @@
 %type <invocation> invocation
 %type <declaration> declaration
 %type <conditional> conditional
-%type <conditional_loop> while_stmt
+%type <while_loop> while_stmt
 %type <procedure> procedure
 %type <parameters> parameters decl_list
 %type <return_stmt> return_stmt
 %type <statement> statement control
 
-%type <block> block statements
+%type <block> block statement_list
 
 /* Operator precedence for mathematical operators */
 %left TOKEN_PLUS TOKEN_MINUS
@@ -99,32 +99,32 @@ program         : block
                     }
                 ;
 
-block           : statements
+block           : statement_list
                 | statement
                     {
-                        $$ = new std::vector<Statement>();
-                        $$->push_back(*$1);
+                        $$ = new Block();
+                        $$->statements.push_back(*$1);
                     }
                 ;
 
-statements      : statement eol
+statement_list  : statement eol
                     {
-                        $$ = new std::vector<Statement>();
-                        $$->push_back(*$1);
+                        $$ = new Block();
+                        $$->statements.push_back(*$1);
                     }
-                | statements statement eol
+                | statement_list statement eol
                     {
                         $$ = $1;
-                        $$->push_back(*$2);
+                        $$->statements.push_back(*$2);
                     }
-                | eol { $$ = new std::vector<Statement>(); }
+                | eol { $$ = new Block(); }
                 ;
 
-statement       : expression { $$ = new Statement(*$1); }
+statement       : expression  { $$ = new Statement(*$1); }
                 | declaration { $$ = new Statement(*$1); }
-                | assignment { $$ = new Statement(*$1); }
-                | invocation { $$ = new Statement(*$1); }
-                | import { $$ = new Statement(*$1); }
+                | assignment  { $$ = new Statement(*$1); }
+                | invocation  { $$ = new Statement(*$1); }
+                | import      { $$ = new Statement(*$1); }
                 | control
                 ;
 
@@ -155,13 +155,13 @@ invocation      : TOKEN_IDENT TOKEN_LPAREN expr_list TOKEN_RPAREN
 
 declaration     : TOKEN_IDENT TOKEN_TYPE
                     {
-                        $$ = new Declaration(*$2, *$1);
+                        $$ = new Declaration(Type(*$2), *$1);
                         delete $2;
                         delete $1;
                     }
                 | TOKEN_IDENT TOKEN_TYPE TOKEN_LARROW expression
                     {
-                        $$ = new Declaration(*$2, *$1, *$4);
+                        $$ = new Declaration(Type(*$2), *$1, *$4);
                         delete $2;
                         delete $1;
                         delete $4;
@@ -194,7 +194,7 @@ conditional     : TOKEN_IF expression TOKEN_LBRACE block TOKEN_RBRACE
 
 while_stmt      : TOKEN_WHILE expression TOKEN_LBRACE block TOKEN_RBRACE
                     {
-                        $$ = new ConditionalLoop(Conditional(*$2, *$4));
+                        $$ = new WhileLoop(*$2, *$4);
                         delete $2;
                         delete $4;
                     }
@@ -202,7 +202,7 @@ while_stmt      : TOKEN_WHILE expression TOKEN_LBRACE block TOKEN_RBRACE
 
 procedure       : TOKEN_PROC TOKEN_IDENT parameters TOKEN_TYPE TOKEN_LBRACE block TOKEN_RBRACE
                     {
-                        $$ = new Procedure(*$2, *$3, *$4, *$6);
+                        $$ = new Procedure(*$2, *$3, Type(*$4), *$6);
                         delete $2;
                         delete $3;
                         delete $4;

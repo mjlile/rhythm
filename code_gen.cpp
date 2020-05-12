@@ -66,9 +66,9 @@ std::map<const std::string, llvm::Type*> types = {
 // create_entry_alloca - Create an alloca instruction in the entry block of
 // the function.  This is used for mutable variables etc.
 // TODO: type of var
-llvm::AllocaInst *create_entry_block_alloca(llvm::Function* f, const std::string& var_name) {
+llvm::AllocaInst *create_entry_block_alloca(llvm::Function* f, const Variable& var) {
     llvm::IRBuilder<> tmp_b(&f->getEntryBlock(), f->getEntryBlock().begin());
-    return tmp_b.CreateAlloca(llvm::Type::getInt32Ty(context), 0, var_name.c_str());
+    return tmp_b.CreateAlloca(llvm::Type::getInt32Ty(context), 0, var.name().c_str());
 }
 
 void cstdlib() {
@@ -123,32 +123,32 @@ std::vector<llvm::Value*> code_gen_args(const std::vector<Expression>& args) {
     return val_args;
 }
 
-llvm::Value* code_gen(const std::string& var_name) {
+llvm::Value* code_gen(const Variable& variable) {
     // Look this variable up in the function.
-    llvm::Value *v = symbol_table.find(var_name);
+    llvm::Value *v = symbol_table.find(variable.name());
     if (!v) {
-        return error("unknown variable \"" + var_name + "\"");
+        return error("unknown variable \"" + variable.name() + "\"");
     }
 
     // Load the value.
-    return builder.CreateLoad(v, var_name.c_str());
+    return builder.CreateLoad(v, variable.name().c_str());
 }
 
 llvm::Value* code_gen(const Invocation& invoc) {	
     // assignment must be handles uniquely
     if (invoc.name() == "<-") {
-        if (!std::holds_alternative<std::string>(invoc.args()[0].value())) {
+        if (!std::holds_alternative<Variable>(invoc.args()[0].value())) {
             return error("left-hand side of assignment must be a variable");
         }
-        std::string var_name = std::get<std::string>(invoc.args()[0].value());
-        llvm::AllocaInst* var = symbol_table.find(var_name);
-        if (!var) {
-            return error("unknown variable " + var_name);
+        Variable var = std::get<Variable>(invoc.args()[0].value());
+        llvm::AllocaInst* alloca = symbol_table.find(var.name());
+        if (!alloca) {
+            return error("unknown variable " + var.name());
         }
         llvm::Value *r = code_gen(invoc.args()[1]);
-        builder.CreateStore(r, var);
+        builder.CreateStore(r, alloca);
         // forbid assignment as expression
-        return var;
+        return alloca;
     }
 
     if (auto it = binary_ops.find(invoc.name()); it != binary_ops.end()) {
@@ -185,7 +185,7 @@ llvm::Value* code_gen(const Invocation& invoc) {
 
 llvm::Value* code_gen(const Declaration& decl) {
     if (symbol_table.find_current_frame(decl.variable())) {
-        return error("variable \"" + decl.variable() + "\" is already declared in this scope");
+        return error("variable \"" + decl.variable().name() + "\" is already declared in this scope");
     }
     llvm::Function* f = builder.GetInsertBlock()->getParent();
 
@@ -228,28 +228,23 @@ I2 for_each_together(I1 first1, I1 limit1, I2 first2, F f) {
 
 // returns last statement value TODO: change?
 // TODO: should statements return a value at all?
-llvm::Value* code_gen(const std::vector<Statement>& stmts) {
-    symbol_table.push_frame();
+llvm::Value* code_gen_current_frame(const Block& block) {
     // TODO
     llvm::Value* val = constant_num(0);
-    for (const Statement& stmt : stmts) {
+    for (const Statement& stmt : block.statements) {
         val = code_gen(stmt);
         if (!val) {
             return error("bad statement in body");	
         }
     }
-    symbol_table.pop_frame();
     return val;
 }
 
-llvm::Value* code_gen_current_frame(const std::vector<Statement>& stmts) {
-    llvm::Value* val;
-    for (const Statement& stmt : stmts) {
-        val = code_gen(stmt);
-        if (!val) {
-            return error("bad statement in body");	
-        }
-    }
+llvm::Value* code_gen(const Block& block) {
+    symbol_table.push_frame();
+    // TODO
+    auto val = code_gen_current_frame(block);
+    symbol_table.pop_frame();
     return val;
 }
 
@@ -298,7 +293,7 @@ llvm::Value* code_gen(const Conditional& cond) {
     return merge_block;
 }
 
-llvm::Value* code_gen(const ConditionalLoop& loop) {
+llvm::Value* code_gen(const WhileLoop& loop) {
     llvm::Function* f = builder.GetInsertBlock()->getParent();
 
     llvm::BasicBlock* cond_block = llvm::BasicBlock::Create(context, "cond", f);
@@ -309,7 +304,7 @@ llvm::Value* code_gen(const ConditionalLoop& loop) {
     builder.SetInsertPoint(cond_block);
 
     // emit condition block
-    llvm::Value* condition = code_gen(loop.conditional().condition());
+    llvm::Value* condition = code_gen(loop.condition());
     if (!condition) {
         return error("bad condition");
     }
@@ -320,7 +315,7 @@ llvm::Value* code_gen(const ConditionalLoop& loop) {
     f->getBasicBlockList().push_back(loop_block);
     builder.SetInsertPoint(loop_block);
 
-    if (!code_gen(loop.conditional().then_block())) {
+    if (!code_gen(loop.block())) {
         return error("bad while loop body");
     }
 
@@ -345,7 +340,7 @@ llvm::Value* code_gen(const Procedure& proc) {
     }	
     // Make the function type:  int(int...) etc.
     std::vector<llvm::Type*> param_types(proc.parameters().size(), llvm::Type::getInt32Ty(context)); // TODO: types	
-    llvm::Type* ret_type = proc.return_type() == "void" ? 
+    llvm::Type* ret_type = proc.return_type().name() == type::void0 ? 
         llvm::Type::getVoidTy(context) : llvm::Type::getInt32Ty(context);
     llvm::FunctionType* ft = llvm::FunctionType::get(ret_type, param_types, false); //TODO: types	
 
@@ -356,7 +351,7 @@ llvm::Value* code_gen(const Procedure& proc) {
         f->args().begin(), f->args().end(),
         proc.parameters().begin(),
         [](auto& llvm_arg, const Declaration& arg) { 	
-            llvm_arg.setName(arg.variable());	
+            llvm_arg.setName(arg.variable().name());	
         }
     );
 
@@ -368,7 +363,7 @@ llvm::Value* code_gen(const Procedure& proc) {
     symbol_table.push_frame();
     // allocate memory for parameters
     for (auto& arg : f->args()) {
-        llvm::AllocaInst* alloc = create_entry_block_alloca(f, arg.getName());
+        llvm::AllocaInst* alloc = create_entry_block_alloca(f, Variable(arg.getName()));
         builder.CreateStore(&arg, alloc);
         if (symbol_table.find_current_frame(arg.getName().str())) {
             return error("variable " + std::string(arg.getName().str()) + " already defined in this scope");
@@ -384,7 +379,7 @@ llvm::Value* code_gen(const Procedure& proc) {
     symbol_table.pop_frame();
 
     // add implicit return at the end of void function
-    if (proc.return_type() == type::void0) {
+    if (proc.return_type().name() == type::void0) {
         builder.CreateRetVoid();
     }
 
