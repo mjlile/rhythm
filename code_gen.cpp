@@ -135,18 +135,38 @@ llvm::Value* code_gen(const Variable& variable) {
     return builder.CreateLoad(v, variable.name().c_str());
 }
 
+llvm::Value* address(const Variable& variable) {
+    // Look this variable up in the function.
+    llvm::Value *v = symbol_table.find(variable.name());
+    if (!v) {
+        return error("unknown variable `" + variable.name() + "`");
+    }
+
+    return v;
+}
+
 llvm::Type* code_gen(const Type& type) {
     if (type.parameters().empty()) {
         return types[type.name()];
     }
 
     if (type.name() == "Pointer") {
+        // TODO: segfaulting when params is empty
         if (type.parameters().size() != 1) {
             return (llvm::Type*) error("too many type arguments to type constructor `Pointer`");
         }
         // TODO: address space?
         return llvm::PointerType::getUnqual(code_gen(type.parameters()[0]));
     }
+    /*
+    else if (type.name() == "Array") {
+        if (type.parameters().size() != 2 {
+            return (llvm::Type*) error("too many type arguments to type constructor `Pointer`");
+        }
+        // TODO: address space?
+        return llvm::ArrayType::get(code_gen(type.parameters()[0]), Type + int variant?);
+    }
+    */
 
     return (llvm::Type*) error("bad type");
 }
@@ -154,18 +174,40 @@ llvm::Type* code_gen(const Type& type) {
 llvm::Value* code_gen(const Invocation& invoc) {	
     // assignment must be handles uniquely
     if (invoc.name() == "<-") {
+        if (invoc.args().size() != 2) {
+            return error("too many arguments to assignment");
+        }
         if (!std::holds_alternative<Variable>(invoc.args()[0].value())) {
             return error("left-hand side of assignment must be a variable");
         }
-        Variable var = std::get<Variable>(invoc.args()[0].value());
+        const Variable& var = std::get<Variable>(invoc.args()[0].value());
         llvm::AllocaInst* alloca = symbol_table.find(var.name());
         if (!alloca) {
             return error("unknown variable " + var.name());
         }
-        llvm::Value *r = code_gen(invoc.args()[1]);
+        llvm::Value* r = code_gen(invoc.args()[1]);
         builder.CreateStore(r, alloca);
-        // forbid assignment as expression
+        // TODO(?): forbid assignment as expression
         return alloca;
+    }
+    else if (invoc.name() == "address") {
+        if (invoc.args().size() != 1) {
+            return error("can only take the address of one variable");
+        }
+        if (!std::holds_alternative<Variable>(invoc.args()[0].value())) {
+            return error("can only take the address of a variable");
+        }
+
+        const Variable& var = std::get<Variable>(invoc.args()[0].value());
+        return address(var);
+    }
+    else if (invoc.name() == "deref") {
+        if (invoc.args().size() != 1) {
+            return error("can only dereference one pointer");
+        }
+        llvm::Value* v = code_gen(invoc.args()[0]);
+
+        return builder.CreateLoad(v);
     }
 
     if (auto it = binary_ops.find(invoc.name()); it != binary_ops.end()) {
@@ -197,7 +239,7 @@ llvm::Value* code_gen(const Invocation& invoc) {
              + " to procedure " + invoc.name());	
     }
 
-    return builder.CreateCall(callee, arg_vals, "calltmp");	
+    return builder.CreateCall(callee, arg_vals);	
 }
 
 llvm::Value* code_gen(const Declaration& decl) {
