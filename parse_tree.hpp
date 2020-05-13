@@ -8,10 +8,15 @@
 // Others
 // ======
 struct Type {
-    Type(const std::string& name) : name_m(name) {}
-    const auto& name() const { return name_m; }
+    Type(const std::string& name) : Type(name, {}) {}
+    Type(const std::string& name, const std::vector<Type>& parameters)
+        : name_m(name), parameters_m(parameters) {}
+    const auto& name()       const { return name_m; }
+    const auto& parameters() const { return parameters_m; }
+
 private:
     std::string name_m;
+    std::vector<Type> parameters_m;
 };
 
 

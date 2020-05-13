@@ -44,6 +44,7 @@
     Declaration* declaration;
     std::vector<Declaration>* parameters;
     std::vector<Expression>* input;
+    std::vector<Type>* type_list;
     Import* import;
     Conditional* conditional;
     WhileLoop* while_loop;
@@ -51,6 +52,7 @@
     Return* return_stmt;
     Statement* statement;
     Block* block;
+    Type* type;
     std::string* string;
     int token;
 }
@@ -64,6 +66,9 @@
 /* keywords */
 %token <token> TOKEN_RETURN TOKEN_IF TOKEN_WHILE TOKEN_DO
 %token <token> TOKEN_AND TOKEN_OR TOKEN_PROC TOKEN_IMPORT TOKEN_LET
+
+%type <type> type
+%type <type_list> type_list
 
 %type <token> or and eq relate add multiply pre post
 
@@ -153,13 +158,13 @@ invocation      : TOKEN_IDENT TOKEN_LPAREN expr_list TOKEN_RPAREN
                         delete $1;
                     }
 
-declaration     : TOKEN_IDENT TOKEN_TYPE
+declaration     : TOKEN_IDENT type
                     {
                         $$ = new Declaration(Type(*$2), *$1);
                         delete $2;
                         delete $1;
                     }
-                | TOKEN_IDENT TOKEN_TYPE TOKEN_LARROW expression
+                | TOKEN_IDENT type TOKEN_LARROW expression
                     {
                         $$ = new Declaration(Type(*$2), *$1, *$4);
                         delete $2;
@@ -200,9 +205,9 @@ while_stmt      : TOKEN_WHILE expression TOKEN_LBRACE block TOKEN_RBRACE
                     }
                 ;
 
-procedure       : TOKEN_PROC TOKEN_IDENT parameters TOKEN_TYPE TOKEN_LBRACE block TOKEN_RBRACE
+procedure       : TOKEN_PROC TOKEN_IDENT parameters type TOKEN_LBRACE block TOKEN_RBRACE
                     {
-                        $$ = new Procedure(*$2, *$3, Type(*$4), *$6);
+                        $$ = new Procedure(*$2, *$3, *$4, *$6);
                         delete $2;
                         delete $3;
                         delete $4;
@@ -315,7 +320,27 @@ primary         : literal { $$ = new Expression(*$1); delete $1; }
                     }
                 ;
 
+type_list       : type {
+                    $$ = new std::vector<Type>{*$1};
+                    delete $1;
+                }
+                | type_list TOKEN_COMMA type {
+                    $$ = $1;
+                    $1->push_back(*$3);
+                    delete $3;
+                }
+                ;
 
+type            : TOKEN_TYPE { 
+                    $$ = new Type(*$1);
+                    delete $1; 
+                }
+                | TOKEN_TYPE TOKEN_LPAREN type_list TOKEN_RPAREN {
+                    $$ = new Type(*$1, *$3);
+                    delete $1;
+                    delete $3;
+                }
+                ;
 
 or : TOKEN_OR;
 and : TOKEN_AND;
