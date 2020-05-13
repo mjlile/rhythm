@@ -46,7 +46,7 @@ make
 ./hello
 ```
 ### Example
-#### Input
+#### hello_world.rh
 ```c
 proc power (a Int, n Int) Int {
     acc Int <- 1
@@ -63,9 +63,17 @@ proc power (a Int, n Int) Int {
     return acc
 }
 
+proc readInt(ptr Pointer(Int)) {
+    printf("n = ")
+    scanf("%d", ptr)
+}
+
 proc main() Int {
     printf("hello world!\n")
-    printf("2^11 = %d\n", power(2, 11))
+
+    n Int
+    readInt(address(n))
+    printf("2^%d = %d\n", n, power(2, n))
 
     return 0
 }
@@ -74,5 +82,6 @@ proc main() Int {
 #### Output
 ```
 hello world!
+n = 11
 2^11 = 2048
 ```
