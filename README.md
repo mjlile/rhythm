@@ -14,6 +14,7 @@ A non-exhaustive list of goals in different areas
 * Better error messages
 * Other primitive types (e.g. floating point numbers)
 * C-style structs
+* Modules
 
 #### Generic Programming Features
 * First-class iterator support
@@ -24,8 +25,7 @@ A non-exhaustive list of goals in different areas
 * Pointers to concepts (runtime generics)
 
 #### Other Nice Features
-These are interesting features from other languages that I would want in my ideal language, but they aren't at the core of what I want Rhythm to be.
-* Large standard library
+These are interesting features from other languages that I would want in my ideal language, but they aren't at the core of what I want Rhythm to be
 * Algebraic data types (e.g. Rust's enum types, optional)
 * Concurrency (async/await coroutines + Go-style channel communication)
 * Ownership (e.g. Rust)
@@ -42,7 +42,8 @@ Clone the repo and build with the provided Makefile. `rhythmc` reads from standa
 git clone https://github.com/mjlile/Rhythm.git
 cd Rhythm
 make
-rhythmc < hello_world.rh | lli
+./rhythmc.sh hello_world.rh -o hello
+./hello
 ```
 ### Example
 #### Input
