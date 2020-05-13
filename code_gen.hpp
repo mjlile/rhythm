@@ -15,6 +15,7 @@ void cstdlib();
 
 llvm::Value* code_gen(const Literal& lit);
 llvm::Value* code_gen(const Variable& var);
+llvm::Type*  code_gen(const Type& type);
 llvm::Value* code_gen(const Invocation& invoc);
 llvm::Value* code_gen(const Expression& expr);
 llvm::Value* code_gen(const Block& stmts);

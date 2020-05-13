@@ -23,7 +23,6 @@ llvm::IRBuilder<> builder(context);
 std::unique_ptr<llvm::Module> module = std::make_unique<llvm::Module>("rhythm", context);
 // TODO: add stack frames
 SymbolTable symbol_table;
-//std::map<std::string, llvm::AllocaInst*> named_values;
 
 // built in binary operations
 std::map<const std::string, std::function<llvm::Value* (llvm::Value*, llvm::Value*)>> binary_ops = {
@@ -63,12 +62,14 @@ std::map<const std::string, llvm::Type*> types = {
     { type::void0,   llvm::Type::getVoidTy   (context) }
 };
 
+
+
 // create_entry_alloca - Create an alloca instruction in the entry block of
 // the function.  This is used for mutable variables etc.
 // TODO: type of var
-llvm::AllocaInst *create_entry_block_alloca(llvm::Function* f, const Variable& var) {
+llvm::AllocaInst *create_entry_block_alloca(llvm::Function* f, const Declaration& decl) {
     llvm::IRBuilder<> tmp_b(&f->getEntryBlock(), f->getEntryBlock().begin());
-    return tmp_b.CreateAlloca(llvm::Type::getInt32Ty(context), 0, var.name().c_str());
+    return tmp_b.CreateAlloca(code_gen(decl.type()), 0, decl.variable().name().c_str());
 }
 
 void cstdlib() {
@@ -134,6 +135,22 @@ llvm::Value* code_gen(const Variable& variable) {
     return builder.CreateLoad(v, variable.name().c_str());
 }
 
+llvm::Type* code_gen(const Type& type) {
+    if (type.parameters().empty()) {
+        return types[type.name()];
+    }
+
+    if (type.name() == "Pointer") {
+        if (type.parameters().size() != 1) {
+            return (llvm::Type*) error("too many type arguments to type constructor `Pointer`");
+        }
+        // TODO: address space?
+        return llvm::PointerType::getUnqual(code_gen(type.parameters()[0]));
+    }
+
+    return (llvm::Type*) error("bad type");
+}
+
 llvm::Value* code_gen(const Invocation& invoc) {	
     // assignment must be handles uniquely
     if (invoc.name() == "<-") {
@@ -189,7 +206,7 @@ llvm::Value* code_gen(const Declaration& decl) {
     }
     llvm::Function* f = builder.GetInsertBlock()->getParent();
 
-    llvm::AllocaInst* alloc = create_entry_block_alloca(f, decl.variable());
+    llvm::AllocaInst* alloc = create_entry_block_alloca(f, decl);
 
     // store initializer, if applicable. otherwise, the value is undefined
     if (decl.initializer()) {
@@ -339,21 +356,17 @@ llvm::Value* code_gen(const Procedure& proc) {
         return error("function " + proc.name() + " redefined");	
     }	
     // Make the function type:  int(int...) etc.
-    std::vector<llvm::Type*> param_types(proc.parameters().size(), llvm::Type::getInt32Ty(context)); // TODO: types	
-    llvm::Type* ret_type = proc.return_type().name() == type::void0 ? 
-        llvm::Type::getVoidTy(context) : llvm::Type::getInt32Ty(context);
-    llvm::FunctionType* ft = llvm::FunctionType::get(ret_type, param_types, false); //TODO: types	
+    std::vector<llvm::Type*> param_types(proc.parameters().size());
+    std::transform(proc.parameters().begin(), proc.parameters().end(),
+                   param_types.begin(),
+                   [](const Declaration& t) {
+                       return code_gen(t.type());
+                   });
+
+    llvm::Type* ret_type = code_gen(proc.return_type());
+    llvm::FunctionType* ft = llvm::FunctionType::get(ret_type, param_types, false);
 
     llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, proc.name(), module.get());	
-
-    // Set names for all arguments
-    for_each_together(
-        f->args().begin(), f->args().end(),
-        proc.parameters().begin(),
-        [](auto& llvm_arg, const Declaration& arg) { 	
-            llvm_arg.setName(arg.variable().name());	
-        }
-    );
 
     // Create a new basic block to start insertion into.	
     llvm::BasicBlock *bb = llvm::BasicBlock::Create(context, "entry", f);	
@@ -361,15 +374,22 @@ llvm::Value* code_gen(const Procedure& proc) {
 
     // include parameters in stack frame
     symbol_table.push_frame();
-    // allocate memory for parameters
-    for (auto& arg : f->args()) {
-        llvm::AllocaInst* alloc = create_entry_block_alloca(f, Variable(arg.getName()));
-        builder.CreateStore(&arg, alloc);
-        if (symbol_table.find_current_frame(arg.getName().str())) {
-            return error("variable " + std::string(arg.getName().str()) + " already defined in this scope");
+    // Set names for all arguments
+    
+    for_each_together(
+        f->args().begin(), f->args().end(),
+        proc.parameters().begin(),
+        [f](auto& llvm_arg, const Declaration& formal_param) { 	
+            llvm_arg.setName(formal_param.variable().name());	
+            llvm::AllocaInst* alloc = create_entry_block_alloca(f, formal_param);
+            builder.CreateStore(&llvm_arg, alloc);
+            if (symbol_table.find_current_frame(formal_param.variable().name())) {
+                // TODO
+                // return error("variable " + formal_param.variable().name() + " already defined in this scope");
+            }
+            symbol_table.add(formal_param.variable().name(), alloc);
         }
-        symbol_table.add(arg.getName(), alloc);
-    }
+    );
 
     if (!code_gen_current_frame(proc.block())) {
         // Error reading body, remove function.	

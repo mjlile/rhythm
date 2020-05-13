@@ -2,6 +2,10 @@
 #define TYPES_HPP
 
 #include <string>
+#include "llvm/IR/Type.h"
+
+extern std::map<const std::string, llvm::Type*> types;
+
 namespace type {
 
 const std::string boolean = "Bool";
@@ -23,6 +27,8 @@ const std::string float64 = "F64";
 
 const std::string void0 = "Void";
 
+
+// map intinsics to LLVM types
 
 }
 
