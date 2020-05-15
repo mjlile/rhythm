@@ -152,21 +152,28 @@ llvm::Type* code_gen(const Type& type) {
 
     if (type.name() == "Pointer") {
         // TODO: segfaulting when params is empty
-        if (type.parameters().size() != 1) {
-            return (llvm::Type*) error("too many type arguments to type constructor `Pointer`");
+        if (type.parameters().size() != 1 || !std::holds_alternative<Type>(type.parameters()[0])) {
+            return (llvm::Type*) error("`Pointer` expects 1 parameter: (value type)");
         }
         // TODO: address space?
-        return llvm::PointerType::getUnqual(code_gen(type.parameters()[0]));
+        return llvm::PointerType::getUnqual(code_gen(std::get<Type>(type.parameters()[0])));
     }
-    /*
+    
     else if (type.name() == "Array") {
-        if (type.parameters().size() != 2 {
-            return (llvm::Type*) error("too many type arguments to type constructor `Pointer`");
+        if (type.parameters().size() != 2 
+            || !std::holds_alternative<Type>(type.parameters()[0])
+            || !std::holds_alternative<size_t>(type.parameters()[1]))
+        {
+            std::cerr << type.parameters().size() << std::flush << std::get<Type>(type.parameters()[0]).name()
+                << std::flush << std::get<size_t>(type.parameters()[1])<< std::endl;
+            return (llvm::Type*) error("`Array` expects 2 parameters: (value type, size)");
         }
         // TODO: address space?
-        return llvm::ArrayType::get(code_gen(type.parameters()[0]), Type + int variant?);
+        const Type& t = std::get<Type>(type.parameters()[0]);
+        size_t sz = std::get<size_t>(type.parameters()[1]);
+        return llvm::ArrayType::get(code_gen(t), sz);
     }
-    */
+    
 
     return (llvm::Type*) error("bad type");
 }
@@ -191,11 +198,11 @@ llvm::Value* code_gen(const Invocation& invoc) {
         return alloca;
     }
     else if (invoc.name() == "address") {
-        if (invoc.args().size() != 1) {
-            return error("can only take the address of one variable");
-        }
-        if (!std::holds_alternative<Variable>(invoc.args()[0].value())) {
-            return error("can only take the address of a variable");
+        if (invoc.args().size() != 1
+        // TODO: address of other lvalues
+            || !std::holds_alternative<Variable>(invoc.args()[0].value()))
+        {
+            return error("`address` expects 1 parameter: (variable)");
         }
 
         const Variable& var = std::get<Variable>(invoc.args()[0].value());
@@ -203,11 +210,47 @@ llvm::Value* code_gen(const Invocation& invoc) {
     }
     else if (invoc.name() == "deref") {
         if (invoc.args().size() != 1) {
-            return error("can only dereference one pointer");
+            return error("`deref` expects 1 parameter");
         }
         llvm::Value* v = code_gen(invoc.args()[0]);
 
         return builder.CreateLoad(v);
+    }
+    else if (invoc.name() == "begin") {
+        if (invoc.args().size() != 1 || !std::holds_alternative<Variable>(invoc.args()[0].value())) {
+            return error("`begin` expects 1 parameter: (range). Only variables are currently supported, not expressions");
+        }
+        llvm::Value* arr = address(std::get<Variable>(invoc.args()[0].value()));
+        
+        /*
+        if (!arr->getType()->isArrayTy()) {
+            return error("`begin` expects 1 parameter: (range). Only array types are currently supported");
+        }*/
+        // returning pointer to arr still?
+        //return builder.CreateGEP(arr, constant_num(0));
+        // TODO: generalize for arrays of any type
+        return builder.CreateBitCast(arr, llvm::Type::getInt32PtrTy(context));
+    }
+    else if (invoc.name() == "limit") {
+        if (invoc.args().size() != 1) {
+            return error("`limit` expects 1 parameter: (range)");
+        }
+        //llvm::Value* arr = code_gen(invoc.args()[0]);
+        llvm::Value* arr = address(std::get<Variable>(invoc.args()[0].value()));
+        /*
+        if (!llvm::isa<llvm::ArrayType>(arr->getType())) {
+            return error("`limit` expects 1 parameter: (range). Only array types are currently supported");
+        }
+        */
+        llvm::Value* sz = constant_num(code_gen(invoc.args()[0])->getType()->getArrayNumElements());
+        return builder.CreateBitCast(builder.CreateGEP(arr, sz), llvm::Type::getInt32PtrTy(context));
+    }
+    else if (invoc.name() == "successor") {
+        if (invoc.args().size() != 1) {
+            return error("`successor` expects 1 parameter: (iterator)");
+        }
+        llvm::Value* ptr = code_gen(invoc.args()[0]);
+        return builder.CreateGEP(ptr, constant_num(1));
     }
 
     if (auto it = binary_ops.find(invoc.name()); it != binary_ops.end()) {

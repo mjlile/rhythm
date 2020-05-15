@@ -9,14 +9,17 @@
 // ======
 struct Type {
     Type(const std::string& name) : Type(name, {}) {}
-    Type(const std::string& name, const std::vector<Type>& parameters)
+    Type(const std::string& name, const std::vector<std::variant<Type, size_t>>& parameters)
         : name_m(name), parameters_m(parameters) {}
     const auto& name()       const { return name_m; }
     const auto& parameters() const { return parameters_m; }
 
 private:
     std::string name_m;
-    std::vector<Type> parameters_m;
+    // if parameters_m is nonempty, this is a type constructor
+    // parameters are types of natural numbers e.g. Array(Int, 8)
+    // must start with a Type
+    std::vector<std::variant<Type, size_t>> parameters_m;
 };
 
 

@@ -2,6 +2,7 @@
     #include <iostream>
     #include <memory>
     #include <string>
+    #include <variant>
     #include <map>
     #include "parse_tree.hpp"
     #include "parser.hpp"
@@ -44,7 +45,7 @@
     Declaration* declaration;
     std::vector<Declaration>* parameters;
     std::vector<Expression>* input;
-    std::vector<Type>* type_list;
+    std::vector<std::variant<Type, size_t>>* type_list;
     Import* import;
     Conditional* conditional;
     WhileLoop* while_loop;
@@ -321,12 +322,17 @@ primary         : literal { $$ = new Expression(*$1); delete $1; }
                 ;
 
 type_list       : type {
-                    $$ = new std::vector<Type>{*$1};
+                    $$ = new std::vector<std::variant<Type, size_t>>{*$1};
                     delete $1;
                 }
                 | type_list TOKEN_COMMA type {
                     $$ = $1;
                     $1->push_back(*$3);
+                    delete $3;
+                }
+                | type_list TOKEN_COMMA TOKEN_INT {
+                    $$ = $1;
+                    $1->push_back(atoll($3->c_str()));
                     delete $3;
                 }
                 ;
