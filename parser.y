@@ -34,7 +34,7 @@
         if (expr2) {
             args.push_back(*expr2);
         }
-        return new Expression(Invocation(name, args));
+        return new Expression{Invocation{name, args}};
     }
 %}
 
@@ -108,14 +108,14 @@ program         : block
 block           : statement_list
                 | statement
                     {
-                        $$ = new Block();
+                        $$ = new Block{};
                         $$->statements.push_back(*$1);
                     }
                 ;
 
 statement_list  : statement eol
                     {
-                        $$ = new Block();
+                        $$ = new Block{};
                         $$->statements.push_back(*$1);
                     }
                 | statement_list statement eol
@@ -126,11 +126,11 @@ statement_list  : statement eol
                 | eol { $$ = new Block(); }
                 ;
 
-statement       : expression  { $$ = new Statement(*$1); }
-                | declaration { $$ = new Statement(*$1); }
-                | assignment  { $$ = new Statement(*$1); }
-                | invocation  { $$ = new Statement(*$1); }
-                | import      { $$ = new Statement(*$1); }
+statement       : expression  { $$ = new Statement{*$1}; }
+                | declaration { $$ = new Statement{*$1}; }
+                | assignment  { $$ = new Statement{*$1}; }
+                | invocation  { $$ = new Statement{Expression{*$1}}; }
+                | import      { $$ = new Statement{*$1}; }
                 | control
                 ;
 
@@ -149,27 +149,27 @@ expr_list       : expression
 
 invocation      : TOKEN_IDENT TOKEN_LPAREN expr_list TOKEN_RPAREN
                     {
-                        $$ = new Invocation(*$1, {*$3});
+                        $$ = new Invocation{*$1, {*$3}};
                         delete $1;
                         delete $3;
                     }
                 | TOKEN_IDENT TOKEN_LPAREN TOKEN_RPAREN
                     {
-                        $$ = new Invocation(*$1, {});
+                        $$ = new Invocation{*$1, {}};
                         delete $1;
                     }
 
 declaration     : TOKEN_IDENT type
                     {
-                        $$ = new Declaration(Type(*$2), *$1);
-                        delete $2;
+                        $$ = new Declaration{*$1, Type{*$2}};
                         delete $1;
+                        delete $2;
                     }
                 | TOKEN_IDENT type TOKEN_LARROW expression
                     {
-                        $$ = new Declaration(Type(*$2), *$1, *$4);
-                        delete $2;
+                        $$ = new Declaration{*$1, Type{*$2}, *$4};
                         delete $1;
+                        delete $2;
                         delete $4;
                     }
                 ;
@@ -180,19 +180,19 @@ assignment      : expression TOKEN_LARROW expression
                     }
                 ;
 
-control         : return_stmt { $$ = new Statement(*$1); delete $1; }
-                | conditional { $$ = new Statement(*$1); delete $1; }
-                | while_stmt { $$ = new Statement(*$1); delete $1; }
-                | procedure { $$ = new Statement(*$1); delete $1; }
+control         : return_stmt { $$ = new Statement{*$1}; delete $1; }
+                | conditional { $$ = new Statement{*$1}; delete $1; }
+                | while_stmt { $$ = new Statement{*$1}; delete $1; }
+                | procedure { $$ = new Statement{*$1}; delete $1; }
                 ;
 
-return_stmt     : TOKEN_RETURN { $$ = new Return(); }
-                | TOKEN_RETURN expression { $$ = new Return(*$2); delete $2; }
+return_stmt     : TOKEN_RETURN { $$ = new Return{}; }
+                | TOKEN_RETURN expression { $$ = new Return{*$2}; delete $2; }
                 ;
 
 conditional     : TOKEN_IF expression TOKEN_LBRACE block TOKEN_RBRACE
                     {
-                        $$ = new Conditional(*$2, *$4);
+                        $$ = new Conditional{*$2, *$4};
                         delete $2;
                         delete $4;
                     }
@@ -200,7 +200,7 @@ conditional     : TOKEN_IF expression TOKEN_LBRACE block TOKEN_RBRACE
 
 while_stmt      : TOKEN_WHILE expression TOKEN_LBRACE block TOKEN_RBRACE
                     {
-                        $$ = new WhileLoop(*$2, *$4);
+                        $$ = new WhileLoop{*$2, *$4};
                         delete $2;
                         delete $4;
                     }
@@ -208,7 +208,7 @@ while_stmt      : TOKEN_WHILE expression TOKEN_LBRACE block TOKEN_RBRACE
 
 procedure       : TOKEN_PROC TOKEN_IDENT parameters type TOKEN_LBRACE block TOKEN_RBRACE
                     {
-                        $$ = new Procedure(*$2, *$3, *$4, *$6);
+                        $$ = new Procedure{*$2, *$3, *$4, *$6};
                         delete $2;
                         delete $3;
                         delete $4;
@@ -217,7 +217,7 @@ procedure       : TOKEN_PROC TOKEN_IDENT parameters type TOKEN_LBRACE block TOKE
                 | TOKEN_PROC TOKEN_IDENT parameters TOKEN_LBRACE block TOKEN_RBRACE
                     {
                         // void procedure
-                        $$ = new Procedure(*$2, *$3, type::void0, *$5);
+                        $$ = new Procedure{*$2, *$3, Type{type::void0}, *$5};
                         delete $2;
                         delete $3;
                         delete $5;
@@ -246,9 +246,9 @@ decl_list       : declaration
                 ;
 
 import          : TOKEN_IMPORT TOKEN_TYPE
-                    { $$ = new Import(*$2); delete $2; }
+                    { $$ = new Import{*$2}; delete $2; }
                 | TOKEN_IMPORT TOKEN_IDENT
-                    { $$ = new Import(*$2); delete $2; }
+                    { $$ = new Import{*$2}; delete $2; }
 
 
 
@@ -312,9 +312,9 @@ postfix         : primary
                     }
                 ;
 
-primary         : literal { $$ = new Expression(*$1); delete $1; }
-                | TOKEN_IDENT { $$ = new Expression(*$1); delete $1; }
-                | invocation { $$ = new Expression(*$1); delete $1; }
+primary         : literal { $$ = new Expression{*$1}; delete $1; }
+                | TOKEN_IDENT { $$ = new Expression{Variable{*$1}}; delete $1; }
+                | invocation { $$ = new Expression{*$1}; delete $1; }
                 | TOKEN_LPAREN expression TOKEN_RPAREN
                     {
                         $$ = operator_to_invocation($1, $2);
@@ -338,11 +338,11 @@ type_list       : type {
                 ;
 
 type            : TOKEN_TYPE { 
-                    $$ = new Type(*$1);
+                    $$ = new Type{*$1};
                     delete $1; 
                 }
                 | TOKEN_TYPE TOKEN_LPAREN type_list TOKEN_RPAREN {
-                    $$ = new Type(*$1, *$3);
+                    $$ = new Type{*$1, *$3};
                     delete $1;
                     delete $3;
                 }
@@ -360,17 +360,23 @@ post : TOKEN_DOT;
 
 literal : TOKEN_INT
             {
-                $$ = new Literal(*$1, Literal::integer);
+                $$ = new Literal{*$1, Literal::integer};
                 delete $1;
             }
         | TOKEN_REAL
             {
-                $$ = new Literal(*$1, Literal::rational);
+                $$ = new Literal{*$1, Literal::rational};
                 delete $1;
             }
         | TOKEN_STR
             {
-                $$ = new Literal(*$1, Literal::string);
+                $$ = new Literal{*$1, Literal::string};
+                // TODO: add other escape sequences
+                size_t i = $$->value.find("\\n"); 
+                while (i != std::string::npos) {
+                    $$->value.replace(i, 2, "\n");
+                    i = $$->value.find("\\n"); 
+                }
                 delete $1;
             }
         ;

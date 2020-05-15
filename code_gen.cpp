@@ -97,7 +97,7 @@ llvm::Value *error(std::string_view str) {
 }
 
 llvm::Value* constant_num(int n) {
-    return code_gen(Literal(std::to_string(n), Literal::Type::integer));
+    return code_gen(Literal{std::to_string(n), Literal::Type::integer});
 }
 
 llvm::Value* code_gen(const Literal& lit) {
@@ -126,7 +126,7 @@ std::vector<llvm::Value*> code_gen_args(const std::vector<Expression>& args) {
 
 llvm::Value* code_gen(const Variable& variable) {
     // Look this variable up in the function.
-    llvm::Value *v = symbol_table.find(variable.name);
+    llvm::Value *v = symbol_table.find(variable);
     if (!v) {
         return error("unknown variable \"" + variable.name + "\"");
     }
@@ -137,7 +137,7 @@ llvm::Value* code_gen(const Variable& variable) {
 
 llvm::Value* address(const Variable& variable) {
     // Look this variable up in the function.
-    llvm::Value *v = symbol_table.find(variable.name);
+    llvm::Value *v = symbol_table.find(variable);
     if (!v) {
         return error("unknown variable `" + variable.name + "`");
     }
@@ -188,7 +188,7 @@ llvm::Value* code_gen(const Invocation& invoc) {
             return error("left-hand side of assignment must be a variable");
         }
         const Variable& var = std::get<Variable>(invoc.args[0].value);
-        llvm::AllocaInst* alloca = symbol_table.find(var.name);
+        llvm::AllocaInst* alloca = symbol_table.find(var);
         if (!alloca) {
             return error("unknown variable " + var.name);
         }
@@ -468,7 +468,7 @@ llvm::Value* code_gen(const Procedure& proc) {
             llvm_arg.setName(formal_param.variable.name);	
             llvm::AllocaInst* alloc = create_entry_block_alloca(f, formal_param);
             builder.CreateStore(&llvm_arg, alloc);
-            if (symbol_table.find_current_frame(formal_param.variable.name)) {
+            if (symbol_table.find_current_frame(formal_param.variable)) {
                 // TODO
                 // return error("variable " + formal_param.variable.name + " already defined in this scope");
             }
@@ -492,6 +492,10 @@ llvm::Value* code_gen(const Procedure& proc) {
     llvm::verifyFunction(*f, &llvm::errs());	
 
     return f;	
+}
+
+llvm::Value* code_gen(const Import& import) {
+    return error("import not yet supported");
 }
 
 llvm::Value* code_gen(const Statement& stmt) {
