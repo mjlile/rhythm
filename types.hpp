@@ -2,33 +2,34 @@
 #define TYPES_HPP
 
 #include <string>
+#include <map>
+#include "parse_tree.hpp"
 #include "llvm/IR/Type.h"
 
-extern std::map<const std::string, llvm::Type*> types;
+extern std::map<Type, llvm::Type*> types;
 
 namespace type {
 
-const std::string boolean = "Bool";
+const Type boolean  = Type{"Bool"};
 
-const std::string integer = "Int";
-const std::string int8 = "I8";
-const std::string int16 = "I16";
-const std::string int32 = "I32";
-const std::string int64 = "I64";
+const Type integer  = Type{"Int"};
+const Type int8     = Type{"I8"};
+const Type int16    = Type{"I16"};
+const Type int32    = Type{"I32"};
+const Type int64    = Type{"I64"};
 
-const std::string natural = "Nat"; // TODO: unsigned vs. natural
-const std::string nat8 = "N8";
-const std::string nat16 = "N16";
-const std::string nat32 = "N32";
-const std::string nat64 = "N64";
+const Type natural  = Type{"Nat"}; // TODO: unsigned vs. natural
+const Type nat8     = Type{"N8"};
+const Type nat16    = Type{"N16"};
+const Type nat32    = Type{"N32"};
+const Type nat64    = Type{"N64"};
 
-const std::string float32 = "F32";
-const std::string float64 = "F64";
+const Type float32  = Type{"F32"};
+const Type float64  = Type{"F64"};
 
-const std::string void0 = "Void";
+const Type void0    = Type{"Void"};
 
 
-// map intinsics to LLVM types
 
 }
 

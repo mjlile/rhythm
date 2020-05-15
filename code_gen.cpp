@@ -2,6 +2,7 @@
 #include <iostream>
 #include <algorithm>
 #include <string_view>
+#include <string>
 #include <map>
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/BasicBlock.h"
@@ -39,7 +40,7 @@ std::map<const std::string, std::function<llvm::Value* (llvm::Value*, llvm::Valu
     {">=", [](llvm::Value* l, llvm::Value* r) { return builder.CreateICmpSGE(l, r); } }
 };
 
-std::map<const std::string, llvm::Type*> types = {
+std::map<Type, llvm::Type*> types = {
     // boolean is 1 byte, but llvm uses int1 TODO?
     { type::boolean, llvm::Type::getInt8Ty   (context) },
     // integer types
@@ -147,7 +148,7 @@ llvm::Value* address(const Variable& variable) {
 
 llvm::Type* code_gen(const Type& type) {
     if (type.parameters.empty()) {
-        return types[type.name];
+        return types[type];
     }
 
     if (type.name == "Pointer") {
@@ -484,7 +485,7 @@ llvm::Value* code_gen(const Procedure& proc) {
     symbol_table.pop_frame();
 
     // add implicit return at the end of void function
-    if (proc.return_type.name == type::void0) {
+    if (proc.return_type == type::void0) {
         builder.CreateRetVoid();
     }
 

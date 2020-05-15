@@ -217,7 +217,7 @@ procedure       : TOKEN_PROC TOKEN_IDENT parameters type TOKEN_LBRACE block TOKE
                 | TOKEN_PROC TOKEN_IDENT parameters TOKEN_LBRACE block TOKEN_RBRACE
                     {
                         // void procedure
-                        $$ = new Procedure{*$2, *$3, Type{type::void0}, *$5};
+                        $$ = new Procedure{*$2, *$3, type::void0, *$5};
                         delete $2;
                         delete $3;
                         delete $5;

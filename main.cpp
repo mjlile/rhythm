@@ -1,4 +1,5 @@
 #include <iostream>
+#include <unistd.h>
 #include "parse_tree.hpp"
 #include "print_tree.hpp"
 #include "code_gen.hpp"
@@ -23,6 +24,11 @@ int main(int argc, char **argv)
         std::cerr << "failed to generate code" << std::endl;
         return 1;
     }
+    if (llvm::verifyModule(*module, &llvm::errs())) {
+        std::cerr << "module failed to verify. compilation terminated" << std::endl;
+        return 1;
+    }
+
     llvm::outs() << *module;
-    llvm::verifyModule(*module, &llvm::errs());
+
 }

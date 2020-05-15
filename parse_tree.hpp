@@ -1,24 +1,21 @@
-#pragma once
+#ifndef PARSE_TREE_HPP
+#define PARSE_TREE_HPP
+
 #include <cstdint>
 #include <variant>
 #include <optional>
 #include <vector>
 #include <memory>
 
-// Others
-// ======
 struct Type {
     std::string name;
-    // if parameters is nonempty, this is a type constructor
-    // parameters are types of natural numbers e.g. Array(Int, 8)
-    // must start with a Type
     std::vector<std::variant<Type, size_t>> parameters;
 };
 
 
-        /*------------.
-        | Expressions |
-        `------------*/
+     /*------------.
+     | Expressions |
+     `------------*/
 struct Expression;
 
 struct Literal {
@@ -40,9 +37,9 @@ struct Expression {
 };
 
 
-        /*-----------.
-        | Statements |
-        `-----------*/
+     /*-----------.
+     | Statements |
+     `-----------*/
 struct Statement;
 
 struct Block {
@@ -85,3 +82,25 @@ struct Statement {
     std::variant<Expression, Declaration, Import, 
                  Conditional, WhileLoop, Procedure, Return> value;
 };
+
+
+// provide equality operator to make parse tree types regular
+// --------------------------------------------------
+bool operator==(const Type& lhs, const Type& rhs);
+bool operator==(const Literal& lhs, const Literal& rhs);
+bool operator==(const Variable& lhs, const Variable& rhs);
+bool operator==(const Invocation& lhs, const Invocation& rhs);
+bool operator==(const Expression& lhs, const Expression& rhs);
+bool operator==(const Block& lhs, const Block& rhs);
+bool operator==(const Declaration& lhs, const Declaration& rhs);
+bool operator==(const Import& lhs, const Import& rhs);
+bool operator==(const Conditional& lhs, const Conditional& rhs);
+bool operator==(const WhileLoop& lhs, const WhileLoop& rhs);
+bool operator==(const Procedure& lhs, const Procedure& rhs);
+bool operator==(const Return& lhs, const Return& rhs);
+bool operator==(const Statement& lhs, const Statement& rhs);
+ 
+// ordering for std::map
+bool operator<(const Type& lhs, const Type& rhs);
+
+#endif

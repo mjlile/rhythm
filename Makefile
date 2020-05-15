@@ -23,5 +23,5 @@ tokens.o: tokens.cpp
 %.o: %.cpp
 	${CC} -c $<
 
-rhythmc: parser.o tokens.o
+rhythmc: parser.o tokens.o parse_tree.o
 	g++-7 -o $@ main.cpp code_gen.cpp *.o -g3 ${LLVM_ARGS} -std=c++17 -pthread
