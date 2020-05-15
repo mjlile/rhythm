@@ -69,7 +69,7 @@ std::map<const std::string, llvm::Type*> types = {
 // TODO: type of var
 llvm::AllocaInst *create_entry_block_alloca(llvm::Function* f, const Declaration& decl) {
     llvm::IRBuilder<> tmp_b(&f->getEntryBlock(), f->getEntryBlock().begin());
-    return tmp_b.CreateAlloca(code_gen(decl.type()), 0, decl.variable().name().c_str());
+    return tmp_b.CreateAlloca(code_gen(decl.type), 0, decl.variable.name.c_str());
 }
 
 void cstdlib() {
@@ -102,16 +102,16 @@ llvm::Value* constant_num(int n) {
 
 llvm::Value* code_gen(const Literal& lit) {
     // TODO: typeless literals from Go 
-    switch (lit.type()) {
+    switch (lit.type) {
     case Literal::Type::string:
-        return llvm::ConstantExpr::getBitCast(builder.CreateGlobalString(lit.value(), ".str"),
+        return llvm::ConstantExpr::getBitCast(builder.CreateGlobalString(lit.value, ".str"),
             llvm::Type::getInt8PtrTy(context));
     case Literal::Type::integer:
         // TODO: hex literals
         return llvm::ConstantInt::get(static_cast<llvm::IntegerType*>(types[type::integer]),
-            lit.value(), 10);
+            lit.value, 10);
     case Literal::Type::rational:
-        return llvm::ConstantFP::get(types[type::float64], lit.value());
+        return llvm::ConstantFP::get(types[type::float64], lit.value);
     }
     return error("invalid literal type");
 }
@@ -126,51 +126,51 @@ std::vector<llvm::Value*> code_gen_args(const std::vector<Expression>& args) {
 
 llvm::Value* code_gen(const Variable& variable) {
     // Look this variable up in the function.
-    llvm::Value *v = symbol_table.find(variable.name());
+    llvm::Value *v = symbol_table.find(variable.name);
     if (!v) {
-        return error("unknown variable \"" + variable.name() + "\"");
+        return error("unknown variable \"" + variable.name + "\"");
     }
 
     // Load the value.
-    return builder.CreateLoad(v, variable.name().c_str());
+    return builder.CreateLoad(v, variable.name.c_str());
 }
 
 llvm::Value* address(const Variable& variable) {
     // Look this variable up in the function.
-    llvm::Value *v = symbol_table.find(variable.name());
+    llvm::Value *v = symbol_table.find(variable.name);
     if (!v) {
-        return error("unknown variable `" + variable.name() + "`");
+        return error("unknown variable `" + variable.name + "`");
     }
 
     return v;
 }
 
 llvm::Type* code_gen(const Type& type) {
-    if (type.parameters().empty()) {
-        return types[type.name()];
+    if (type.parameters.empty()) {
+        return types[type.name];
     }
 
-    if (type.name() == "Pointer") {
+    if (type.name == "Pointer") {
         // TODO: segfaulting when params is empty
-        if (type.parameters().size() != 1 || !std::holds_alternative<Type>(type.parameters()[0])) {
+        if (type.parameters.size() != 1 || !std::holds_alternative<Type>(type.parameters[0])) {
             return (llvm::Type*) error("`Pointer` expects 1 parameter: (value type)");
         }
         // TODO: address space?
-        return llvm::PointerType::getUnqual(code_gen(std::get<Type>(type.parameters()[0])));
+        return llvm::PointerType::getUnqual(code_gen(std::get<Type>(type.parameters[0])));
     }
     
-    else if (type.name() == "Array") {
-        if (type.parameters().size() != 2 
-            || !std::holds_alternative<Type>(type.parameters()[0])
-            || !std::holds_alternative<size_t>(type.parameters()[1]))
+    else if (type.name == "Array") {
+        if (type.parameters.size() != 2 
+            || !std::holds_alternative<Type>(type.parameters[0])
+            || !std::holds_alternative<size_t>(type.parameters[1]))
         {
-            std::cerr << type.parameters().size() << std::flush << std::get<Type>(type.parameters()[0]).name()
-                << std::flush << std::get<size_t>(type.parameters()[1])<< std::endl;
+            std::cerr << type.parameters.size() << std::flush << std::get<Type>(type.parameters[0]).name
+                << std::flush << std::get<size_t>(type.parameters[1])<< std::endl;
             return (llvm::Type*) error("`Array` expects 2 parameters: (value type, size)");
         }
         // TODO: address space?
-        const Type& t = std::get<Type>(type.parameters()[0]);
-        size_t sz = std::get<size_t>(type.parameters()[1]);
+        const Type& t = std::get<Type>(type.parameters[0]);
+        size_t sz = std::get<size_t>(type.parameters[1]);
         return llvm::ArrayType::get(code_gen(t), sz);
     }
     
@@ -180,47 +180,47 @@ llvm::Type* code_gen(const Type& type) {
 
 llvm::Value* code_gen(const Invocation& invoc) {	
     // assignment must be handles uniquely
-    if (invoc.name() == "<-") {
-        if (invoc.args().size() != 2) {
+    if (invoc.name == "<-") {
+        if (invoc.args.size() != 2) {
             return error("too many arguments to assignment");
         }
-        if (!std::holds_alternative<Variable>(invoc.args()[0].value())) {
+        if (!std::holds_alternative<Variable>(invoc.args[0].value)) {
             return error("left-hand side of assignment must be a variable");
         }
-        const Variable& var = std::get<Variable>(invoc.args()[0].value());
-        llvm::AllocaInst* alloca = symbol_table.find(var.name());
+        const Variable& var = std::get<Variable>(invoc.args[0].value);
+        llvm::AllocaInst* alloca = symbol_table.find(var.name);
         if (!alloca) {
-            return error("unknown variable " + var.name());
+            return error("unknown variable " + var.name);
         }
-        llvm::Value* r = code_gen(invoc.args()[1]);
+        llvm::Value* r = code_gen(invoc.args[1]);
         builder.CreateStore(r, alloca);
         // TODO(?): forbid assignment as expression
         return alloca;
     }
-    else if (invoc.name() == "address") {
-        if (invoc.args().size() != 1
+    else if (invoc.name == "address") {
+        if (invoc.args.size() != 1
         // TODO: address of other lvalues
-            || !std::holds_alternative<Variable>(invoc.args()[0].value()))
+            || !std::holds_alternative<Variable>(invoc.args[0].value))
         {
             return error("`address` expects 1 parameter: (variable)");
         }
 
-        const Variable& var = std::get<Variable>(invoc.args()[0].value());
+        const Variable& var = std::get<Variable>(invoc.args[0].value);
         return address(var);
     }
-    else if (invoc.name() == "deref") {
-        if (invoc.args().size() != 1) {
+    else if (invoc.name == "deref") {
+        if (invoc.args.size() != 1) {
             return error("`deref` expects 1 parameter");
         }
-        llvm::Value* v = code_gen(invoc.args()[0]);
+        llvm::Value* v = code_gen(invoc.args[0]);
 
         return builder.CreateLoad(v);
     }
-    else if (invoc.name() == "begin") {
-        if (invoc.args().size() != 1 || !std::holds_alternative<Variable>(invoc.args()[0].value())) {
+    else if (invoc.name == "begin") {
+        if (invoc.args.size() != 1 || !std::holds_alternative<Variable>(invoc.args[0].value)) {
             return error("`begin` expects 1 parameter: (range). Only variables are currently supported, not expressions");
         }
-        llvm::Value* arr = address(std::get<Variable>(invoc.args()[0].value()));
+        llvm::Value* arr = address(std::get<Variable>(invoc.args[0].value));
         
         /*
         if (!arr->getType()->isArrayTy()) {
@@ -231,89 +231,89 @@ llvm::Value* code_gen(const Invocation& invoc) {
         // TODO: generalize for arrays of any type
         return builder.CreateBitCast(arr, llvm::Type::getInt32PtrTy(context));
     }
-    else if (invoc.name() == "limit") {
-        if (invoc.args().size() != 1) {
+    else if (invoc.name == "limit") {
+        if (invoc.args.size() != 1) {
             return error("`limit` expects 1 parameter: (range)");
         }
-        //llvm::Value* arr = code_gen(invoc.args()[0]);
-        llvm::Value* arr = address(std::get<Variable>(invoc.args()[0].value()));
+        //llvm::Value* arr = code_gen(invoc.args[0]);
+        llvm::Value* arr = address(std::get<Variable>(invoc.args[0].value));
         /*
         if (!llvm::isa<llvm::ArrayType>(arr->getType())) {
             return error("`limit` expects 1 parameter: (range). Only array types are currently supported");
         }
         */
-        llvm::Value* sz = constant_num(code_gen(invoc.args()[0])->getType()->getArrayNumElements());
+        llvm::Value* sz = constant_num(code_gen(invoc.args[0])->getType()->getArrayNumElements());
         return builder.CreateBitCast(builder.CreateGEP(arr, sz), llvm::Type::getInt32PtrTy(context));
     }
-    else if (invoc.name() == "successor") {
-        if (invoc.args().size() != 1) {
+    else if (invoc.name == "successor") {
+        if (invoc.args.size() != 1) {
             return error("`successor` expects 1 parameter: (iterator)");
         }
-        llvm::Value* ptr = code_gen(invoc.args()[0]);
+        llvm::Value* ptr = code_gen(invoc.args[0]);
         return builder.CreateGEP(ptr, constant_num(1));
     }
 
-    if (auto it = binary_ops.find(invoc.name()); it != binary_ops.end()) {
-        llvm::Value *l = code_gen(invoc.args()[0]);
-        llvm::Value *r = code_gen(invoc.args()[1]);
+    if (auto it = binary_ops.find(invoc.name); it != binary_ops.end()) {
+        llvm::Value *l = code_gen(invoc.args[0]);
+        llvm::Value *r = code_gen(invoc.args[1]);
         if (!l || !r) { return error("bad input"); }
         return it->second(l, r);
     }
 
-    llvm::Function *callee = module->getFunction(invoc.name());	
+    llvm::Function *callee = module->getFunction(invoc.name);	
     if (!callee) {	
-        return error("call to unknown procedure " + invoc.name());	
+        return error("call to unknown procedure " + invoc.name);	
     }	
     // correct number of parameters
-    if (!callee->isVarArg() && callee->arg_size() != invoc.args().size()) {	
-        return error(invoc.name() + " requires " + std::to_string(callee->arg_size())
-            + " parameters, " + std::to_string(invoc.args().size()) + " given");	
+    if (!callee->isVarArg() && callee->arg_size() != invoc.args.size()) {	
+        return error(invoc.name + " requires " + std::to_string(callee->arg_size())
+            + " parameters, " + std::to_string(invoc.args.size()) + " given");	
     }	
-    if (callee->isVarArg() && callee->arg_size() > invoc.args().size()) {
-        return error(invoc.name() + " requires at least" + std::to_string(callee->arg_size())
-            + " parameters, " + std::to_string(invoc.args().size()) + " given");	
+    if (callee->isVarArg() && callee->arg_size() > invoc.args.size()) {
+        return error(invoc.name + " requires at least" + std::to_string(callee->arg_size())
+            + " parameters, " + std::to_string(invoc.args.size()) + " given");	
     }
 
 
-    auto arg_vals = code_gen_args(invoc.args());	
+    auto arg_vals = code_gen_args(invoc.args);	
     if (auto it = std::find(arg_vals.begin(), arg_vals.end(), nullptr);
         it != arg_vals.end()) {	
         return error("bad argument in position " + std::to_string(it - arg_vals.begin())
-             + " to procedure " + invoc.name());	
+             + " to procedure " + invoc.name);	
     }
 
     return builder.CreateCall(callee, arg_vals);	
 }
 
 llvm::Value* code_gen(const Declaration& decl) {
-    if (symbol_table.find_current_frame(decl.variable())) {
-        return error("variable \"" + decl.variable().name() + "\" is already declared in this scope");
+    if (symbol_table.find_current_frame(decl.variable)) {
+        return error("variable \"" + decl.variable.name + "\" is already declared in this scope");
     }
     llvm::Function* f = builder.GetInsertBlock()->getParent();
 
     llvm::AllocaInst* alloc = create_entry_block_alloca(f, decl);
 
     // store initializer, if applicable. otherwise, the value is undefined
-    if (decl.initializer()) {
-        llvm::Value* init_val = code_gen(*decl.initializer());
+    if (decl.initializer) {
+        llvm::Value* init_val = code_gen(*decl.initializer);
         builder.CreateStore(init_val, alloc);
     }
 
-    symbol_table.add(decl.variable(), alloc);
+    symbol_table.add(decl.variable, alloc);
 
     return alloc;
 }
 
 llvm::Value* code_gen(const Return& ret) {
-    if (ret.value()) {
-        return builder.CreateRet(code_gen(*ret.value()));
+    if (ret.value) {
+        return builder.CreateRet(code_gen(*ret.value));
     }
 
     return builder.CreateRetVoid();
 }
 
 llvm::Value* code_gen(const Expression& expr) {
-    return std::visit([] (auto& x) { return code_gen(x); }, expr.value());
+    return std::visit([] (auto& x) { return code_gen(x); }, expr.value);
 }
 
 
@@ -351,7 +351,7 @@ llvm::Value* code_gen(const Block& block) {
 }
 
 llvm::Value* code_gen(const Conditional& cond) {
-    llvm::Value* condition = code_gen(cond.condition());
+    llvm::Value* condition = code_gen(cond.condition);
     if (!condition) {
         return error("bad condition");
     }
@@ -366,7 +366,7 @@ llvm::Value* code_gen(const Conditional& cond) {
     builder.CreateCondBr(condition, then_block, else_block);
     builder.SetInsertPoint(then_block);
 
-    if (!code_gen(cond.then_block())) {
+    if (!code_gen(cond.then_block)) {
         return error("bad then block");
     }
 
@@ -379,7 +379,7 @@ llvm::Value* code_gen(const Conditional& cond) {
     f->getBasicBlockList().push_back(else_block);
     builder.SetInsertPoint(else_block);
     
-    if (!code_gen(cond.else_block())) {
+    if (!code_gen(cond.else_block)) {
         return error("bad else block");
     }
 
@@ -406,7 +406,7 @@ llvm::Value* code_gen(const WhileLoop& loop) {
     builder.SetInsertPoint(cond_block);
 
     // emit condition block
-    llvm::Value* condition = code_gen(loop.condition());
+    llvm::Value* condition = code_gen(loop.condition);
     if (!condition) {
         return error("bad condition");
     }
@@ -417,7 +417,7 @@ llvm::Value* code_gen(const WhileLoop& loop) {
     f->getBasicBlockList().push_back(loop_block);
     builder.SetInsertPoint(loop_block);
 
-    if (!code_gen(loop.block())) {
+    if (!code_gen(loop.block)) {
         return error("bad while loop body");
     }
 
@@ -436,22 +436,22 @@ llvm::Value* code_gen(const WhileLoop& loop) {
 llvm::Value* code_gen(const Procedure& proc) {
     // check for function redefinition	
     // TODO: function hoisting?
-    llvm::Function *redef_check = module->getFunction(proc.name());	
+    llvm::Function *redef_check = module->getFunction(proc.name);	
     if(redef_check && !redef_check->empty()) {	
-        return error("function " + proc.name() + " redefined");	
+        return error("function " + proc.name + " redefined");	
     }	
     // Make the function type:  int(int...) etc.
-    std::vector<llvm::Type*> param_types(proc.parameters().size());
-    std::transform(proc.parameters().begin(), proc.parameters().end(),
+    std::vector<llvm::Type*> param_types(proc.parameters.size());
+    std::transform(proc.parameters.begin(), proc.parameters.end(),
                    param_types.begin(),
                    [](const Declaration& t) {
-                       return code_gen(t.type());
+                       return code_gen(t.type);
                    });
 
-    llvm::Type* ret_type = code_gen(proc.return_type());
+    llvm::Type* ret_type = code_gen(proc.return_type);
     llvm::FunctionType* ft = llvm::FunctionType::get(ret_type, param_types, false);
 
-    llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, proc.name(), module.get());	
+    llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, proc.name, module.get());	
 
     // Create a new basic block to start insertion into.	
     llvm::BasicBlock *bb = llvm::BasicBlock::Create(context, "entry", f);	
@@ -463,28 +463,28 @@ llvm::Value* code_gen(const Procedure& proc) {
     
     for_each_together(
         f->args().begin(), f->args().end(),
-        proc.parameters().begin(),
+        proc.parameters.begin(),
         [f](auto& llvm_arg, const Declaration& formal_param) { 	
-            llvm_arg.setName(formal_param.variable().name());	
+            llvm_arg.setName(formal_param.variable.name);	
             llvm::AllocaInst* alloc = create_entry_block_alloca(f, formal_param);
             builder.CreateStore(&llvm_arg, alloc);
-            if (symbol_table.find_current_frame(formal_param.variable().name())) {
+            if (symbol_table.find_current_frame(formal_param.variable.name)) {
                 // TODO
-                // return error("variable " + formal_param.variable().name() + " already defined in this scope");
+                // return error("variable " + formal_param.variable.name + " already defined in this scope");
             }
-            symbol_table.add(formal_param.variable().name(), alloc);
+            symbol_table.add(formal_param.variable.name, alloc);
         }
     );
 
-    if (!code_gen_current_frame(proc.block())) {
+    if (!code_gen_current_frame(proc.block)) {
         // Error reading body, remove function.	
         f->eraseFromParent();	
-        return error("could not generate procedure " + proc.name());	
+        return error("could not generate procedure " + proc.name);	
     }
     symbol_table.pop_frame();
 
     // add implicit return at the end of void function
-    if (proc.return_type().name() == type::void0) {
+    if (proc.return_type.name == type::void0) {
         builder.CreateRetVoid();
     }
 
@@ -495,5 +495,5 @@ llvm::Value* code_gen(const Procedure& proc) {
 }
 
 llvm::Value* code_gen(const Statement& stmt) {
-    return std::visit([] (auto& x) { return code_gen(x); }, stmt.value());
+    return std::visit([] (auto& x) { return code_gen(x); }, stmt.value);
 }
