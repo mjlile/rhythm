@@ -1,6 +1,6 @@
 #include "parse_tree.hpp"
 
-
+// equality
 bool operator==(const Type& lhs, const Type& rhs) {
     return lhs.name == rhs.name;
 }

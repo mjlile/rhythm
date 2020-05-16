@@ -97,10 +97,6 @@ llvm::Value *error(std::string_view str) {
     return nullptr;
 }
 
-llvm::Value* constant_num(int n) {
-    return code_gen(Literal{std::to_string(n), Literal::Type::integer});
-}
-
 llvm::Value* code_gen(const Literal& lit) {
     // TODO: typeless literals from Go 
     switch (lit.type) {
@@ -146,6 +142,17 @@ llvm::Value* address(const Variable& variable) {
     return v;
 }
 
+llvm::Value* address(const llvm::Value* val) {
+    return builder.CreateAlloca(val->getType(), 0, "tmpaddr");
+}
+
+llvm::Value* address(const Expression& expr) {
+    if (std::holds_alternative<Variable>(expr.value)) {
+        return address(std::get<Variable>(expr.value));
+    }
+    return nullptr;
+}
+
 llvm::Type* code_gen(const Type& type) {
     if (type.parameters.empty()) {
         return types[type];
@@ -185,29 +192,29 @@ llvm::Value* code_gen(const Invocation& invoc) {
         if (invoc.args.size() != 2) {
             return error("too many arguments to assignment");
         }
-        if (!std::holds_alternative<Variable>(invoc.args[0].value)) {
-            return error("left-hand side of assignment must be a variable");
+        llvm::Value* ptr = address(invoc.args[0]);
+        if (!ptr) {
+            return error("bad assignee");
         }
-        const Variable& var = std::get<Variable>(invoc.args[0].value);
-        llvm::AllocaInst* alloca = symbol_table.find(var);
-        if (!alloca) {
-            return error("unknown variable " + var.name);
-        }
+        
         llvm::Value* r = code_gen(invoc.args[1]);
-        builder.CreateStore(r, alloca);
+        if (!r) {
+            return error("bad rvalue in assignment");
+        }
+        builder.CreateStore(r, ptr);
         // TODO(?): forbid assignment as expression
-        return alloca;
+        return ptr;
     }
     else if (invoc.name == "address") {
-        if (invoc.args.size() != 1
-        // TODO: address of other lvalues
-            || !std::holds_alternative<Variable>(invoc.args[0].value))
-        {
+        if (invoc.args.size() != 1) {
             return error("`address` expects 1 parameter: (variable)");
         }
+        if (std::holds_alternative<Variable>(invoc.args[0].value)) {
+            const Variable& var = std::get<Variable>(invoc.args[0].value);
+            return address(var);
+        }
+        return address(code_gen(invoc.args[0]));
 
-        const Variable& var = std::get<Variable>(invoc.args[0].value);
-        return address(var);
     }
     else if (invoc.name == "deref") {
         if (invoc.args.size() != 1) {
@@ -228,7 +235,7 @@ llvm::Value* code_gen(const Invocation& invoc) {
             return error("`begin` expects 1 parameter: (range). Only array types are currently supported");
         }*/
         // returning pointer to arr still?
-        //return builder.CreateGEP(arr, constant_num(0));
+        //return builder.CreateGEP(arr, builder.getInt32(0));
         // TODO: generalize for arrays of any type
         return builder.CreateBitCast(arr, llvm::Type::getInt32PtrTy(context));
     }
@@ -243,15 +250,14 @@ llvm::Value* code_gen(const Invocation& invoc) {
             return error("`limit` expects 1 parameter: (range). Only array types are currently supported");
         }
         */
-        llvm::Value* sz = constant_num(code_gen(invoc.args[0])->getType()->getArrayNumElements());
-        return builder.CreateBitCast(builder.CreateGEP(arr, sz), llvm::Type::getInt32PtrTy(context));
+        return builder.CreateBitCast(builder.CreateGEP(arr, builder.getInt64(1)), llvm::Type::getInt32PtrTy(context));
     }
     else if (invoc.name == "successor") {
         if (invoc.args.size() != 1) {
             return error("`successor` expects 1 parameter: (iterator)");
         }
         llvm::Value* ptr = code_gen(invoc.args[0]);
-        return builder.CreateGEP(ptr, constant_num(1));
+        return builder.CreateGEP(ptr, builder.getInt32(1));
     }
 
     if (auto it = binary_ops.find(invoc.name); it != binary_ops.end()) {
@@ -333,7 +339,7 @@ I2 for_each_together(I1 first1, I1 limit1, I2 first2, F f) {
 // TODO: should statements return a value at all?
 llvm::Value* code_gen_current_frame(const Block& block) {
     // TODO
-    llvm::Value* val = constant_num(0);
+    llvm::Value* val = builder.getInt32(0);
     for (const Statement& stmt : block.statements) {
         val = code_gen(stmt);
         if (!val) {

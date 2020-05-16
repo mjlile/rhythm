@@ -12,7 +12,6 @@ struct Type {
     std::vector<std::variant<Type, size_t>> parameters;
 };
 
-
      /*------------.
      | Expressions |
      `------------*/
@@ -35,7 +34,6 @@ struct Invocation {
 struct Expression {
     std::variant<Literal, Variable, Invocation> value;
 };
-
 
      /*-----------.
      | Statements |
@@ -86,19 +84,19 @@ struct Statement {
 
 // provide equality operator to make parse tree types regular
 // --------------------------------------------------
-bool operator==(const Type& lhs, const Type& rhs);
-bool operator==(const Literal& lhs, const Literal& rhs);
-bool operator==(const Variable& lhs, const Variable& rhs);
-bool operator==(const Invocation& lhs, const Invocation& rhs);
-bool operator==(const Expression& lhs, const Expression& rhs);
-bool operator==(const Block& lhs, const Block& rhs);
-bool operator==(const Declaration& lhs, const Declaration& rhs);
-bool operator==(const Import& lhs, const Import& rhs);
-bool operator==(const Conditional& lhs, const Conditional& rhs);
-bool operator==(const WhileLoop& lhs, const WhileLoop& rhs);
-bool operator==(const Procedure& lhs, const Procedure& rhs);
-bool operator==(const Return& lhs, const Return& rhs);
-bool operator==(const Statement& lhs, const Statement& rhs);
+bool operator==(const Type        & lhs, const Type        & rhs);
+bool operator==(const Literal     & lhs, const Literal     & rhs);
+bool operator==(const Variable    & lhs, const Variable    & rhs);
+bool operator==(const Invocation  & lhs, const Invocation  & rhs);
+bool operator==(const Expression  & lhs, const Expression  & rhs);
+bool operator==(const Block       & lhs, const Block       & rhs);
+bool operator==(const Declaration & lhs, const Declaration & rhs);
+bool operator==(const Import      & lhs, const Import      & rhs);
+bool operator==(const Conditional & lhs, const Conditional & rhs);
+bool operator==(const WhileLoop   & lhs, const WhileLoop   & rhs);
+bool operator==(const Procedure   & lhs, const Procedure   & rhs);
+bool operator==(const Return      & lhs, const Return      & rhs);
+bool operator==(const Statement   & lhs, const Statement   & rhs);
  
 // ordering for std::map
 bool operator<(const Type& lhs, const Type& rhs);
