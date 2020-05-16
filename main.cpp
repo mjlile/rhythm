@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include "parse_tree.hpp"
 #include "print_tree.hpp"
-#include "code_gen.hpp"
+#include "ir_emitter.hpp"
 
 // bison (yacc) setup requires pointers, will change in the future
 extern Block* program;
@@ -18,17 +18,18 @@ int main(int argc, char **argv)
     cstdlib();
 
     // generate LLVM IR
-    llvm::Value* ir = code_gen(*program);
+    bool success = emit_stmt(*program);
 
-    if (!ir) {
+    if (!success) {
         std::cerr << "failed to generate code" << std::endl;
-        return 1;
-    }
-    if (llvm::verifyModule(*module, &llvm::errs())) {
-        std::cerr << "module failed to verify. compilation terminated" << std::endl;
         return 1;
     }
 
     llvm::outs() << *module;
+
+    if (llvm::verifyModule(*module, &llvm::errs())) {
+        std::cerr << "module failed to verify. compilation terminated" << std::endl;
+        return 1;
+    }
 
 }

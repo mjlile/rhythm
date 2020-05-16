@@ -1,4 +1,4 @@
-#include "code_gen.hpp"
+#include "ir_emitter.hpp"
 #include <iostream>
 #include <algorithm>
 #include <string_view>
@@ -70,7 +70,7 @@ std::map<Type, llvm::Type*> types = {
 // TODO: type of var
 llvm::AllocaInst *create_entry_block_alloca(llvm::Function* f, const Declaration& decl) {
     llvm::IRBuilder<> tmp_b(&f->getEntryBlock(), f->getEntryBlock().begin());
-    return tmp_b.CreateAlloca(code_gen(decl.type), 0, decl.variable.name.c_str());
+    return tmp_b.CreateAlloca(llvm_type(decl.type), 0, decl.variable.name.c_str());
 }
 
 void cstdlib() {
@@ -91,13 +91,48 @@ void cstdlib() {
     f->setCallingConv(llvm::CallingConv::C);
 }
 
-
 llvm::Value *error(std::string_view str) {
     std::cerr << str << std::endl;
     return nullptr;
 }
 
-llvm::Value* code_gen(const Literal& lit) {
+llvm::Type* llvm_type(const Type& type) {
+    if (type.parameters.empty()) {
+        return types[type];
+    }
+
+    if (type.name == "Pointer") {
+        // TODO: segfaulting when params is empty
+        if (type.parameters.size() != 1 || !std::holds_alternative<Type>(type.parameters[0])) {
+            return (llvm::Type*) error("`Pointer` expects 1 parameter: (value type)");
+        }
+        // TODO: address space?
+        return llvm::PointerType::getUnqual(llvm_type(std::get<Type>(type.parameters[0])));
+    }
+    else if (type.name == "Array") {
+        if (type.parameters.size() != 2 
+            || !std::holds_alternative<Type>(type.parameters[0])
+            || !std::holds_alternative<size_t>(type.parameters[1]))
+        {
+            std::cerr << type.parameters.size() << std::flush << std::get<Type>(type.parameters[0]).name
+                << std::flush << std::get<size_t>(type.parameters[1])<< std::endl;
+            return (llvm::Type*) error("`Array` expects 2 parameters: (value type, size)");
+        }
+        // TODO: address space?
+        const Type& t = std::get<Type>(type.parameters[0]);
+        size_t sz = std::get<size_t>(type.parameters[1]);
+        return llvm::ArrayType::get(llvm_type(t), sz);
+    }
+    
+
+    return (llvm::Type*) error("bad type");
+}
+
+
+llvm::Value* emit_expr(const Literal& lit, bool addr) {
+    if (addr) {
+        return error("Literals have no address");
+    }
     // TODO: typeless literals from Go 
     switch (lit.type) {
     case Literal::Type::string:
@@ -113,114 +148,58 @@ llvm::Value* code_gen(const Literal& lit) {
     return error("invalid literal type");
 }
 
-std::vector<llvm::Value*> code_gen_args(const std::vector<Expression>& args) {	
-    std::vector<llvm::Value*> val_args;	
-    std::transform(args.cbegin(), args.cend(),	
-                   std::back_inserter(val_args),
-                   [] (auto& x) { return code_gen(x); } );	
-    return val_args;
-}
-
-llvm::Value* code_gen(const Variable& variable) {
+llvm::Value* emit_expr(const Variable& variable, bool addr) {
     // Look this variable up in the function.
-    llvm::Value *v = symbol_table.find(variable);
+    llvm::AllocaInst *v = symbol_table.find(variable);
     if (!v) {
         return error("unknown variable \"" + variable.name + "\"");
+    }
+    if (addr) {
+        return v;
     }
 
     // Load the value.
     return builder.CreateLoad(v, variable.name.c_str());
 }
 
-llvm::Value* address(const Variable& variable) {
-    // Look this variable up in the function.
-    llvm::Value *v = symbol_table.find(variable);
-    if (!v) {
-        return error("unknown variable `" + variable.name + "`");
-    }
-
-    return v;
-}
-
-llvm::Value* address(const llvm::Value* val) {
-    return builder.CreateAlloca(val->getType(), 0, "tmpaddr");
-}
-
-llvm::Value* address(const Expression& expr) {
-    if (std::holds_alternative<Variable>(expr.value)) {
-        return address(std::get<Variable>(expr.value));
-    }
-    return nullptr;
-}
-
-llvm::Type* code_gen(const Type& type) {
-    if (type.parameters.empty()) {
-        return types[type];
-    }
-
-    if (type.name == "Pointer") {
-        // TODO: segfaulting when params is empty
-        if (type.parameters.size() != 1 || !std::holds_alternative<Type>(type.parameters[0])) {
-            return (llvm::Type*) error("`Pointer` expects 1 parameter: (value type)");
-        }
-        // TODO: address space?
-        return llvm::PointerType::getUnqual(code_gen(std::get<Type>(type.parameters[0])));
-    }
-    
-    else if (type.name == "Array") {
-        if (type.parameters.size() != 2 
-            || !std::holds_alternative<Type>(type.parameters[0])
-            || !std::holds_alternative<size_t>(type.parameters[1]))
-        {
-            std::cerr << type.parameters.size() << std::flush << std::get<Type>(type.parameters[0]).name
-                << std::flush << std::get<size_t>(type.parameters[1])<< std::endl;
-            return (llvm::Type*) error("`Array` expects 2 parameters: (value type, size)");
-        }
-        // TODO: address space?
-        const Type& t = std::get<Type>(type.parameters[0]);
-        size_t sz = std::get<size_t>(type.parameters[1]);
-        return llvm::ArrayType::get(code_gen(t), sz);
-    }
-    
-
-    return (llvm::Type*) error("bad type");
-}
-
-llvm::Value* code_gen(const Invocation& invoc) {	
+llvm::Value* emit_expr(const Invocation& invoc, bool addr) {	
     // assignment must be handles uniquely
     if (invoc.name == "<-") {
         if (invoc.args.size() != 2) {
             return error("too many arguments to assignment");
         }
-        llvm::Value* ptr = address(invoc.args[0]);
+        llvm::Value* ptr = emit_expr(invoc.args[0], true);
         if (!ptr) {
             return error("bad assignee");
         }
         
-        llvm::Value* r = code_gen(invoc.args[1]);
+        llvm::Value* r = emit_expr(invoc.args[1]);
         if (!r) {
             return error("bad rvalue in assignment");
         }
         builder.CreateStore(r, ptr);
-        // TODO(?): forbid assignment as expression
+        // TODO (?): forbid assignment as expression
         return ptr;
     }
     else if (invoc.name == "address") {
         if (invoc.args.size() != 1) {
             return error("`address` expects 1 parameter: (variable)");
         }
-        if (std::holds_alternative<Variable>(invoc.args[0].value)) {
-            const Variable& var = std::get<Variable>(invoc.args[0].value);
-            return address(var);
-        }
-        return address(code_gen(invoc.args[0]));
+        return emit_expr(invoc.args[0], true);
 
     }
     else if (invoc.name == "deref") {
         if (invoc.args.size() != 1) {
             return error("`deref` expects 1 parameter");
         }
-        llvm::Value* v = code_gen(invoc.args[0]);
+        // TODO: false?
+        llvm::Value* v = emit_expr(invoc.args[0]);
+        if (!v) {
+            return error("bad deref parameter");
+        }
+        if (addr) {
+            return v;
+        }
 
         return builder.CreateLoad(v);
     }
@@ -228,7 +207,7 @@ llvm::Value* code_gen(const Invocation& invoc) {
         if (invoc.args.size() != 1 || !std::holds_alternative<Variable>(invoc.args[0].value)) {
             return error("`begin` expects 1 parameter: (range). Only variables are currently supported, not expressions");
         }
-        llvm::Value* arr = address(std::get<Variable>(invoc.args[0].value));
+        llvm::Value* arr = emit_expr(invoc.args[0], true);
         
         /*
         if (!arr->getType()->isArrayTy()) {
@@ -243,8 +222,7 @@ llvm::Value* code_gen(const Invocation& invoc) {
         if (invoc.args.size() != 1) {
             return error("`limit` expects 1 parameter: (range)");
         }
-        //llvm::Value* arr = code_gen(invoc.args[0]);
-        llvm::Value* arr = address(std::get<Variable>(invoc.args[0].value));
+        llvm::Value* arr = emit_expr(invoc.args[0], true);
         /*
         if (!llvm::isa<llvm::ArrayType>(arr->getType())) {
             return error("`limit` expects 1 parameter: (range). Only array types are currently supported");
@@ -256,13 +234,14 @@ llvm::Value* code_gen(const Invocation& invoc) {
         if (invoc.args.size() != 1) {
             return error("`successor` expects 1 parameter: (iterator)");
         }
-        llvm::Value* ptr = code_gen(invoc.args[0]);
+
+        llvm::Value* ptr = emit_expr(invoc.args[0]);
         return builder.CreateGEP(ptr, builder.getInt32(1));
     }
 
     if (auto it = binary_ops.find(invoc.name); it != binary_ops.end()) {
-        llvm::Value *l = code_gen(invoc.args[0]);
-        llvm::Value *r = code_gen(invoc.args[1]);
+        llvm::Value *l = emit_expr(invoc.args[0]);
+        llvm::Value *r = emit_expr(invoc.args[1]);
         if (!l || !r) { return error("bad input"); }
         return it->second(l, r);
     }
@@ -282,19 +261,36 @@ llvm::Value* code_gen(const Invocation& invoc) {
     }
 
 
-    auto arg_vals = code_gen_args(invoc.args);	
-    if (auto it = std::find(arg_vals.begin(), arg_vals.end(), nullptr);
-        it != arg_vals.end()) {	
-        return error("bad argument in position " + std::to_string(it - arg_vals.begin())
+    std::vector<llvm::Value *> llvm_args(invoc.args.size());
+    std::transform(invoc.args.cbegin(), invoc.args.cend(),	
+                   llvm_args.begin(),
+                   [] (auto& x) { return emit_expr(x); } );
+
+    if (auto it = std::find(llvm_args.begin(), llvm_args.end(), nullptr);
+        it != llvm_args.end()) {	
+        return error("bad argument in position " + std::to_string(it - llvm_args.begin())
              + " to procedure " + invoc.name);	
     }
 
-    return builder.CreateCall(callee, arg_vals);	
+    return builder.CreateCall(callee, llvm_args);	
 }
 
-llvm::Value* code_gen(const Declaration& decl) {
+llvm::Value* emit_expr(const Expression& expr, bool addr) {
+    return std::visit([addr] (auto& x) { return emit_expr(x, addr); }, expr.value);
+}
+
+// statements
+// ----------
+bool emit_stmt(const Expression& expr) {
+    llvm::Value* v = std::visit([] (auto& x) { return emit_expr(x); }, expr.value);
+    return v != nullptr;
+}
+
+
+bool emit_stmt(const Declaration& decl) {
     if (symbol_table.find_current_frame(decl.variable)) {
-        return error("variable \"" + decl.variable.name + "\" is already declared in this scope");
+        error("variable \"" + decl.variable.name + "\" is already declared in this scope");
+        return false;
     }
     llvm::Function* f = builder.GetInsertBlock()->getParent();
 
@@ -302,25 +298,26 @@ llvm::Value* code_gen(const Declaration& decl) {
 
     // store initializer, if applicable. otherwise, the value is undefined
     if (decl.initializer) {
-        llvm::Value* init_val = code_gen(*decl.initializer);
+        llvm::Value* init_val = emit_expr(*decl.initializer);
         builder.CreateStore(init_val, alloc);
     }
 
     symbol_table.add(decl.variable, alloc);
-
-    return alloc;
+    return true;
 }
 
-llvm::Value* code_gen(const Return& ret) {
+bool emit_stmt(const Return& ret) {
     if (ret.value) {
-        return builder.CreateRet(code_gen(*ret.value));
+        llvm::Value* v = emit_expr(*ret.value);
+        if (!v) {
+            return false;
+        }
+        builder.CreateRet(v);
+        return true;
     }
 
-    return builder.CreateRetVoid();
-}
-
-llvm::Value* code_gen(const Expression& expr) {
-    return std::visit([] (auto& x) { return code_gen(x); }, expr.value);
+    builder.CreateRetVoid();
+    return true;
 }
 
 
@@ -337,30 +334,28 @@ I2 for_each_together(I1 first1, I1 limit1, I2 first2, F f) {
 
 // returns last statement value TODO: change?
 // TODO: should statements return a value at all?
-llvm::Value* code_gen_current_frame(const Block& block) {
-    // TODO
-    llvm::Value* val = builder.getInt32(0);
+bool emit_stmt_current_frame(const Block& block) {
     for (const Statement& stmt : block.statements) {
-        val = code_gen(stmt);
-        if (!val) {
-            return error("bad statement in body");	
+        bool success = emit_stmt(stmt);
+        if (!success) {
+            return false;
         }
     }
-    return val;
+    return true;
 }
 
-llvm::Value* code_gen(const Block& block) {
+bool emit_stmt(const Block& block) {
     symbol_table.push_frame();
-    // TODO
-    auto val = code_gen_current_frame(block);
+    bool success = emit_stmt_current_frame(block);
     symbol_table.pop_frame();
-    return val;
+    return success;
 }
 
-llvm::Value* code_gen(const Conditional& cond) {
-    llvm::Value* condition = code_gen(cond.condition);
+bool emit_stmt(const Conditional& cond) {
+    llvm::Value* condition = emit_expr(cond.condition);
     if (!condition) {
-        return error("bad condition");
+        error("bad condition");
+        return false;
     }
 
     llvm::Function* f = builder.GetInsertBlock()->getParent();
@@ -373,36 +368,37 @@ llvm::Value* code_gen(const Conditional& cond) {
     builder.CreateCondBr(condition, then_block, else_block);
     builder.SetInsertPoint(then_block);
 
-    if (!code_gen(cond.then_block)) {
-        return error("bad then block");
+    if (!emit_stmt(cond.then_block)) {
+        error("bad then block");
+        return false;
     }
 
     builder.CreateBr(merge_block);
 
-    // code_gen for then block may have changed insertion block (e.g. nested if)
+    // emit_stmt for then block may have changed insertion block (e.g. nested if)
     then_block = builder.GetInsertBlock();
 
     // emit else block
     f->getBasicBlockList().push_back(else_block);
     builder.SetInsertPoint(else_block);
     
-    if (!code_gen(cond.else_block)) {
-        return error("bad else block");
+    if (!emit_stmt(cond.else_block)) {
+        error("bad else block");
+        return false;
     }
 
     builder.CreateBr(merge_block);
-    // code_gen for else block may have changed insertion block
+    // emit_stmt for else block may have changed insertion block
     else_block = builder.GetInsertBlock();
 
     // emit merge block
     f->getBasicBlockList().push_back(merge_block);
     builder.SetInsertPoint(merge_block);
 
-    // TODO: ?
-    return merge_block;
+    return true;
 }
 
-llvm::Value* code_gen(const WhileLoop& loop) {
+bool emit_stmt(const WhileLoop& loop) {
     llvm::Function* f = builder.GetInsertBlock()->getParent();
 
     llvm::BasicBlock* cond_block = llvm::BasicBlock::Create(context, "cond", f);
@@ -413,9 +409,10 @@ llvm::Value* code_gen(const WhileLoop& loop) {
     builder.SetInsertPoint(cond_block);
 
     // emit condition block
-    llvm::Value* condition = code_gen(loop.condition);
+    llvm::Value* condition = emit_expr(loop.condition);
     if (!condition) {
-        return error("bad condition");
+        error("bad condition");
+        return false;
     }
 
     builder.CreateCondBr(condition, loop_block, cont_block);
@@ -424,8 +421,9 @@ llvm::Value* code_gen(const WhileLoop& loop) {
     f->getBasicBlockList().push_back(loop_block);
     builder.SetInsertPoint(loop_block);
 
-    if (!code_gen(loop.block)) {
-        return error("bad while loop body");
+    if (!emit_stmt(loop.block)) {
+        error("bad while loop body");
+        return false;
     }
 
     // always branch back to check the condition
@@ -435,27 +433,26 @@ llvm::Value* code_gen(const WhileLoop& loop) {
     f->getBasicBlockList().push_back(cont_block);
     builder.SetInsertPoint(cont_block);
 
-    // TODO: ?
-    return cont_block;
-
+    return true;
 }
 
-llvm::Value* code_gen(const Procedure& proc) {
+bool emit_stmt(const Procedure& proc) {
     // check for function redefinition	
     // TODO: function hoisting?
     llvm::Function *redef_check = module->getFunction(proc.name);	
     if(redef_check && !redef_check->empty()) {	
-        return error("function " + proc.name + " redefined");	
+        error("function " + proc.name + " redefined");	
+        return false;
     }	
     // Make the function type:  int(int...) etc.
     std::vector<llvm::Type*> param_types(proc.parameters.size());
     std::transform(proc.parameters.begin(), proc.parameters.end(),
                    param_types.begin(),
                    [](const Declaration& t) {
-                       return code_gen(t.type);
+                       return llvm_type(t.type);
                    });
 
-    llvm::Type* ret_type = code_gen(proc.return_type);
+    llvm::Type* ret_type = llvm_type(proc.return_type);
     llvm::FunctionType* ft = llvm::FunctionType::get(ret_type, param_types, false);
 
     llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, proc.name, module.get());	
@@ -483,10 +480,11 @@ llvm::Value* code_gen(const Procedure& proc) {
         }
     );
 
-    if (!code_gen_current_frame(proc.block)) {
+    if (!emit_stmt_current_frame(proc.block)) {
         // Error reading body, remove function.	
         f->eraseFromParent();	
-        return error("could not generate procedure " + proc.name);	
+        error("could not generate procedure " + proc.name);	
+        return false;
     }
     symbol_table.pop_frame();
 
@@ -498,13 +496,14 @@ llvm::Value* code_gen(const Procedure& proc) {
     // Validate the generated code, checking for consistency.	
     llvm::verifyFunction(*f, &llvm::errs());	
 
-    return f;	
+    return true;	
 }
 
-llvm::Value* code_gen(const Import& import) {
-    return error("import not yet supported");
+bool emit_stmt(const Import& import) {
+    error("import not yet supported");
+    return false;
 }
 
-llvm::Value* code_gen(const Statement& stmt) {
-    return std::visit([] (auto& x) { return code_gen(x); }, stmt.value);
+bool emit_stmt(const Statement& stmt) {
+    return std::visit([] (auto& x) { return emit_stmt(x); }, stmt.value);
 }
