@@ -79,9 +79,74 @@ proc main() Int {
 }
 
 ```
-#### Output
+##### Output
 ```
 hello world!
 n = 11
 2^11 = 2048
+```
+
+#### alg_example.rh
+```c
+proc copy(f_i Pointer(Int), l_i Pointer(Int), f_o Pointer(Int)) Pointer(Int) {
+    while f_i < l_i {
+        deref(f_o) <- deref(f_i)
+        f_i <- successor(f_i)
+        f_o <- successor(f_o)
+    }
+    return f_o
+}
+
+proc iota(f Pointer(Int), l Pointer(Int), initial Int) {
+    while f < l {
+        deref(f) <- initial
+        f <- successor(f)
+        initial <- initial + 1
+    }
+}
+
+proc fill(f Pointer(Int), l Pointer(Int), val Int) {
+    while f < l {
+        deref(f) <- val
+        f <- successor(f)
+    }
+}
+
+proc print(f Pointer(Int), l Pointer(Int)) {
+    while f < l {
+        printf("%d ", deref(f))
+        f <- successor(f)
+    }
+    printf("\n")
+}
+
+proc main() Int {
+    arr1 Array(Int, 16)
+    arr2 Array(Int, 16)
+
+    printf("array 1:\n")
+    iota(begin(arr1), limit(arr1), 32)
+    print(begin(arr1), limit(arr1))
+
+    printf("\narray 2:\n")
+    fill(begin(arr2), limit(arr2), 64)
+    print(begin(arr2), limit(arr2))
+
+    printf("\narray 1 copied to array 2:\n")
+    copy(begin(arr1), limit(arr1), begin(arr2))
+    print(begin(arr2), limit(arr2))
+
+    return 0
+}
+```
+##### Output
+```
+array 1:
+32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 
+
+array 2:
+64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64
+
+array 1 copied to array 2:
+32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47
 ```
