@@ -7,9 +7,11 @@
 #include <vector>
 #include <memory>
 
+struct Declaration;
+
 struct Type {
     std::string name;
-    std::vector<std::variant<Type, size_t>> parameters;
+    std::vector<std::variant<Type, size_t, Declaration>> parameters;
 };
 
      /*------------.

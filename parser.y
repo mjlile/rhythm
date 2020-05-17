@@ -43,9 +43,10 @@
     Invocation* invocation;
     Expression* expression;
     Declaration* declaration;
-    std::vector<Declaration>* parameters;
+    std::vector<Declaration>* decl_list;
     std::vector<Expression>* input;
-    std::vector<std::variant<Type, size_t>>* type_list;
+    std::variant<Type, size_t, Declaration>* type_param;
+    std::vector<std::variant<Type, size_t, Declaration>>* type_param_list;
     Import* import;
     Conditional* conditional;
     WhileLoop* while_loop;
@@ -69,7 +70,8 @@
 %token <token> TOKEN_AND TOKEN_OR TOKEN_PROC TOKEN_IMPORT TOKEN_LET
 
 %type <type> type
-%type <type_list> type_list
+%type <type_param_list> type_param_list
+%type <type_param> type_param
 
 %type <token> or and eq relate add multiply pre post
 
@@ -85,7 +87,7 @@
 %type <conditional> conditional
 %type <while_loop> while_stmt
 %type <procedure> procedure
-%type <parameters> parameters decl_list
+%type <decl_list> parameters decl_list
 %type <return_stmt> return_stmt
 %type <statement> statement control
 
@@ -321,18 +323,27 @@ primary         : literal { $$ = new Expression{*$1}; delete $1; }
                     }
                 ;
 
-type_list       : type {
-                    $$ = new std::vector<std::variant<Type, size_t>>{*$1};
+type_param      : type {
+                    $$ = new std::variant<Type, size_t, Declaration>(Type{*$1});
                     delete $1;
                 }
-                | type_list TOKEN_COMMA type {
+                | TOKEN_INT {
+                    $$ = new std::variant<Type, size_t, Declaration>(size_t{atoll($1->c_str())});
+                    delete $1;
+                }
+                | declaration {
+                    $$ = new std::variant<Type, size_t, Declaration>(Declaration{*$1});
+                    delete $1;
+                }
+                ;
+
+type_param_list : type_param {
+                    $$ = new std::vector<std::variant<Type, size_t, Declaration>>{*$1};
+                    delete $1;
+                }
+                | type_param_list TOKEN_COMMA type_param {
                     $$ = $1;
                     $1->push_back(*$3);
-                    delete $3;
-                }
-                | type_list TOKEN_COMMA TOKEN_INT {
-                    $$ = $1;
-                    $1->push_back(atoll($3->c_str()));
                     delete $3;
                 }
                 ;
@@ -341,7 +352,7 @@ type            : TOKEN_TYPE {
                     $$ = new Type{*$1};
                     delete $1; 
                 }
-                | TOKEN_TYPE TOKEN_LPAREN type_list TOKEN_RPAREN {
+                | TOKEN_TYPE TOKEN_LPAREN type_param_list TOKEN_RPAREN {
                     $$ = new Type{*$1, *$3};
                     delete $1;
                     delete $3;

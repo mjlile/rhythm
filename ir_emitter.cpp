@@ -101,7 +101,22 @@ llvm::Type* llvm_type(const Type& type) {
         return types[type];
     }
 
-    if (type.name == "Pointer") {
+    if (type.name == "Struct") {
+        std::vector<llvm::Type*> types(type.parameters.size());
+        std::transform(type.parameters.begin(), type.parameters.end(),
+                       types.begin(),
+                       [] (const auto& variant) -> llvm::Type* {
+                           if (std::holds_alternative<Declaration>(variant)) {
+                               return llvm_type(std::get<Declaration>(variant).type);
+                           }
+                           if (std::holds_alternative<Type>(variant)) {
+                               return llvm_type(std::get<Type>(variant));
+                           }
+                           return nullptr;
+                       });
+        return llvm::StructType::create(context, types);
+    }
+    else if (type.name == "Pointer") {
         // TODO: segfaulting when params is empty
         if (type.parameters.size() != 1 || !std::holds_alternative<Type>(type.parameters[0])) {
             return (llvm::Type*) error("`Pointer` expects 1 parameter: (value type)");
@@ -127,7 +142,6 @@ llvm::Type* llvm_type(const Type& type) {
 
     return (llvm::Type*) error("bad type");
 }
-
 
 llvm::Value* emit_expr(const Literal& lit, bool addr) {
     if (addr) {
