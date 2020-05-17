@@ -52,6 +52,7 @@
     WhileLoop* while_loop;
     Procedure* procedure;
     Return* return_stmt;
+    Typedef* type_def;
     Statement* statement;
     Block* block;
     Type* type;
@@ -66,7 +67,7 @@
 %token <token> TOKEN_LBRACK TOKEN_RBRACK TOKEN_LARROW TOKEN_RARROW TOKEN_DOT TOKEN_COMMA
 %token <token> TOKEN_COLON TOKEN_BANG TOKEN_PLUS TOKEN_MINUS TOKEN_STAR TOKEN_SLASH TOKEN_PERCENT
 /* keywords */
-%token <token> TOKEN_RETURN TOKEN_IF TOKEN_WHILE TOKEN_DO
+%token <token> TOKEN_RETURN TOKEN_IF TOKEN_WHILE TOKEN_DO TOKEN_TYPEDEF
 %token <token> TOKEN_AND TOKEN_OR TOKEN_PROC TOKEN_IMPORT TOKEN_LET
 
 %type <type> type
@@ -89,6 +90,7 @@
 %type <procedure> procedure
 %type <decl_list> parameters decl_list
 %type <return_stmt> return_stmt
+%type <type_def> type_def
 %type <statement> statement control
 
 %type <block> block statement_list
@@ -133,6 +135,7 @@ statement       : expression  { $$ = new Statement{*$1}; }
                 | assignment  { $$ = new Statement{*$1}; }
                 | invocation  { $$ = new Statement{Expression{*$1}}; }
                 | import      { $$ = new Statement{*$1}; }
+                | type_def    { $$ = new Statement{*$1}; delete $1; }
                 | control
                 ;
 
@@ -328,7 +331,7 @@ type_param      : type {
                     delete $1;
                 }
                 | TOKEN_INT {
-                    $$ = new std::variant<Type, size_t, Declaration>(size_t{atoll($1->c_str())});
+                    $$ = new std::variant<Type, size_t, Declaration>(size_t{(size_t) atoll($1->c_str())});
                     delete $1;
                 }
                 | declaration {
@@ -355,6 +358,17 @@ type            : TOKEN_TYPE {
                 | TOKEN_TYPE TOKEN_LPAREN type_param_list TOKEN_RPAREN {
                     $$ = new Type{*$1, *$3};
                     delete $1;
+                    delete $3;
+                }
+                | TOKEN_TYPE TOKEN_LPAREN TOKEN_RPAREN {
+                    $$ = new Type{*$1, {}};
+                    delete $1;
+                }
+                ;
+
+type_def        : TOKEN_TYPEDEF TOKEN_TYPE type {
+                    $$ = new Typedef{*$2, *$3};
+                    delete $2;
                     delete $3;
                 }
                 ;

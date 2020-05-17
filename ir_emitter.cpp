@@ -23,7 +23,8 @@ llvm::LLVMContext context;
 llvm::IRBuilder<> builder(context);
 std::unique_ptr<llvm::Module> module = std::make_unique<llvm::Module>("rhythm", context);
 // TODO: add stack frames
-SymbolTable symbol_table;
+SymbolTable<Variable, llvm::AllocaInst> variable_table;
+SymbolTable<Type, llvm::Type> type_table;
 
 // built in binary operations
 std::map<const std::string, std::function<llvm::Value* (llvm::Value*, llvm::Value*)>> binary_ops = {
@@ -98,6 +99,10 @@ llvm::Value *error(std::string_view str) {
 
 llvm::Type* llvm_type(const Type& type) {
     if (type.parameters.empty()) {
+        llvm::Type* t = type_table.find(type);
+        if (t) {
+            return t;
+        }
         return types[type];
     }
 
@@ -114,6 +119,7 @@ llvm::Type* llvm_type(const Type& type) {
                            }
                            return nullptr;
                        });
+
         return llvm::StructType::create(context, types);
     }
     else if (type.name == "Pointer") {
@@ -164,7 +170,7 @@ llvm::Value* emit_expr(const Literal& lit, bool addr) {
 
 llvm::Value* emit_expr(const Variable& variable, bool addr) {
     // Look this variable up in the function.
-    llvm::AllocaInst *v = symbol_table.find(variable);
+    llvm::AllocaInst *v = variable_table.find(variable);
     if (!v) {
         return error("unknown variable \"" + variable.name + "\"");
     }
@@ -302,7 +308,7 @@ bool emit_stmt(const Expression& expr) {
 
 
 bool emit_stmt(const Declaration& decl) {
-    if (symbol_table.find_current_frame(decl.variable)) {
+    if (variable_table.find_current_frame(decl.variable)) {
         error("variable \"" + decl.variable.name + "\" is already declared in this scope");
         return false;
     }
@@ -316,7 +322,7 @@ bool emit_stmt(const Declaration& decl) {
         builder.CreateStore(init_val, alloc);
     }
 
-    symbol_table.add(decl.variable, alloc);
+    variable_table.add(decl.variable, alloc);
     return true;
 }
 
@@ -359,9 +365,11 @@ bool emit_stmt_current_frame(const Block& block) {
 }
 
 bool emit_stmt(const Block& block) {
-    symbol_table.push_frame();
+    variable_table.push_frame();
+    type_table.push_frame();
     bool success = emit_stmt_current_frame(block);
-    symbol_table.pop_frame();
+    type_table.pop_frame();
+    variable_table.pop_frame();
     return success;
 }
 
@@ -476,7 +484,8 @@ bool emit_stmt(const Procedure& proc) {
     builder.SetInsertPoint(bb);
 
     // include parameters in stack frame
-    symbol_table.push_frame();
+    variable_table.push_frame();
+    type_table.push_frame();
     // Set names for all arguments
     
     for_each_together(
@@ -486,11 +495,11 @@ bool emit_stmt(const Procedure& proc) {
             llvm_arg.setName(formal_param.variable.name);	
             llvm::AllocaInst* alloc = create_entry_block_alloca(f, formal_param);
             builder.CreateStore(&llvm_arg, alloc);
-            if (symbol_table.find_current_frame(formal_param.variable)) {
+            if (variable_table.find_current_frame(formal_param.variable)) {
                 // TODO
                 // return error("variable " + formal_param.variable.name + " already defined in this scope");
             }
-            symbol_table.add(formal_param.variable.name, alloc);
+            variable_table.add(formal_param.variable.name, alloc);
         }
     );
 
@@ -500,7 +509,8 @@ bool emit_stmt(const Procedure& proc) {
         error("could not generate procedure " + proc.name);	
         return false;
     }
-    symbol_table.pop_frame();
+    type_table.pop_frame();
+    variable_table.pop_frame();
 
     // add implicit return at the end of void function
     if (proc.return_type == type::void0) {
@@ -517,6 +527,29 @@ bool emit_stmt(const Import& import) {
     error("import not yet supported");
     return false;
 }
+
+bool emit_stmt(const Typedef& def) {
+    if (def.type.name != "Struct") {
+        error("only Structs can be typedefed currently");
+        return false;
+    }
+
+    llvm::Type* t = llvm_type(def.type);
+    if (!t) {
+        error("could not emit type");
+        return false;
+    }
+    llvm::StructType* st = llvm::cast<llvm::StructType>(t);
+    if (!st) {
+        error("could not emit type");
+        return false;
+    }
+    st->setName(def.name);
+    type_table.add(Type{def.name}, t);
+
+    return true;
+}
+
 
 bool emit_stmt(const Statement& stmt) {
     return std::visit([] (auto& x) { return emit_stmt(x); }, stmt.value);

@@ -25,6 +25,7 @@ bool emit_stmt(const Declaration & decl );
 bool emit_stmt(const Return      & ret  );
 bool emit_stmt(const Conditional & cond );
 bool emit_stmt(const Procedure   & proc );
+bool emit_stmt(const Typedef     & def  );
 bool emit_stmt(const Statement   & stmt );
 
 #endif

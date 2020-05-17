@@ -6,6 +6,8 @@
 #include <vector>
 #include "llvm/IR/Instructions.h"
 
+template<typename Domain, typename Range>
+// Domain must have a std::string field `name`
 struct SymbolTable {
     void push_frame() {
         table.emplace_back();
@@ -15,34 +17,42 @@ struct SymbolTable {
         table.pop_back();
     }
 
-    void add(const Variable& variable, llvm::AllocaInst* alloc) {
-        add(variable.name, alloc);
-    }
-    void add(const std::string& variable_name, llvm::AllocaInst* alloc) {
-        table.back()[variable_name] = alloc;
+    void add(const Domain& symbol, Range* value) {
+        add(symbol.name, value);
     }
 
-    llvm::AllocaInst* find_current_frame(const Variable& variable) {
-        if (auto it = table.back().find(variable.name); it != table.back().end()) {
+    void add(const std::string& name, Range* value) {
+        table.back()[name] = value;
+    }
+
+    Range* find_current_frame(const Domain& symbol) {
+        return find_current_frame(symbol.name);
+    }
+    Range* find(const Domain& symbol) {
+        return find(symbol.name);
+    }
+
+    Range* find_current_frame(const std::string& name) {
+        if (auto it = table.back().find(name); it != table.back().end()) {
             return it->second;
         }
         return nullptr;
     }
 
-    llvm::AllocaInst* find(const Variable& variable) {
+    Range* find(const std::string& name) {
         auto map_it = std::find_if(table.rbegin(), table.rend(),
-            [variable](auto& map) {
-                return map.find(variable.name) != map.end();
+            [name](auto& map) {
+                return map.find(name) != map.end();
             });
 
         if (map_it != table.rend()) {
-            return map_it->find(variable.name)->second;
+            return map_it->find(name)->second;
         }
 
         return nullptr;
     }
 private:
-    std::vector<std::unordered_map<std::string, llvm::AllocaInst*>> table;
+    std::vector<std::unordered_map<std::string, Range*>> table;
 };
 
 #endif

@@ -78,9 +78,14 @@ struct Return {
     std::optional<Expression> value;
 };
 
+struct Typedef {
+    std::string name;
+    Type type;
+};
+
 struct Statement {
     std::variant<Expression, Declaration, Import, 
-                 Conditional, WhileLoop, Procedure, Return> value;
+        Conditional, WhileLoop, Procedure, Return, Typedef> value;
 };
 
 
