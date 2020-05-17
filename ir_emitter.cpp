@@ -224,8 +224,8 @@ llvm::Value* emit_expr(const Invocation& invoc, bool addr) {
         return builder.CreateLoad(v);
     }
     else if (invoc.name == "begin") {
-        if (invoc.args.size() != 1 || !std::holds_alternative<Variable>(invoc.args[0].value)) {
-            return error("`begin` expects 1 parameter: (range). Only variables are currently supported, not expressions");
+        if (invoc.args.size() != 1) {
+            return error("`begin` expects 1 parameter: (range)");
         }
         llvm::Value* arr = emit_expr(invoc.args[0], true);
         
