@@ -23,7 +23,8 @@
         {TOKEN_GT, ">"},
         {TOKEN_GE, ">="},
         {TOKEN_LARROW, "<-"},
-        {TOKEN_PERCENT, "%"}
+        {TOKEN_PERCENT, "%"},
+        {TOKEN_DOT, "."}
     };
 
     Expression* operator_to_invocation(int op_token, Expression* expr1, Expression* expr2 = nullptr) {
@@ -74,11 +75,11 @@
 %type <type_param_list> type_param_list
 %type <type_param> type_param
 
-%type <token> or and eq relate add multiply pre post
+%type <token> or and eq relate add multiply pre
 
 %type <input> expr_list
-%type <literal> literal 
-%type <expression> primary postfix prefix multiplicative additive relational 
+%type <literal> literal
+%type <expression> primary prefix multiplicative additive relational 
 %type <expression> equality conjunction disjunction
 %type <expression> expression assignment
 
@@ -163,6 +164,7 @@ invocation      : TOKEN_IDENT TOKEN_LPAREN expr_list TOKEN_RPAREN
                         $$ = new Invocation{*$1, {}};
                         delete $1;
                     }
+                ;
 
 declaration     : TOKEN_IDENT type
                     {
@@ -303,17 +305,10 @@ multiplicative  : prefix
                     }
                 ;
 
-prefix          : postfix
+prefix          : primary
                 | pre prefix
                     {
                         $$ = operator_to_invocation($1, $2);
-                    }
-                ;
-
-postfix         : primary
-                | postfix post
-                    {
-                        $$ = operator_to_invocation($2, $1);
                     }
                 ;
 
@@ -378,9 +373,8 @@ and : TOKEN_AND;
 eq : TOKEN_EQ | TOKEN_NE;
 relate : TOKEN_LT | TOKEN_LE | TOKEN_GT | TOKEN_GE;
 add : TOKEN_PLUS | TOKEN_MINUS;
-multiply : TOKEN_STAR | TOKEN_SLASH | TOKEN_PERCENT;
-pre : TOKEN_BANG | TOKEN_MINUS | TOKEN_STAR;
-post : TOKEN_DOT;
+multiply : TOKEN_STAR | TOKEN_SLASH | TOKEN_PERCENT | TOKEN_DOT; // TODO: make dot op before prefix
+pre : TOKEN_BANG | TOKEN_MINUS;
 
 
 literal : TOKEN_INT

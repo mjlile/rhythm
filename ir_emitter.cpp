@@ -25,6 +25,7 @@ std::unique_ptr<llvm::Module> module = std::make_unique<llvm::Module>("rhythm", 
 // TODO: add stack frames
 SymbolTable<Variable, llvm::AllocaInst> variable_table;
 SymbolTable<Type, llvm::Type> type_table;
+std::map<std::string, std::map<std::string, llvm::ConstantInt*>> struct_field_indices;
 
 // built in binary operations
 std::map<const std::string, std::function<llvm::Value* (llvm::Value*, llvm::Value*)>> binary_ops = {
@@ -108,19 +109,32 @@ llvm::Type* llvm_type(const Type& type) {
 
     if (type.name == "Struct") {
         std::vector<llvm::Type*> types(type.parameters.size());
+
         std::transform(type.parameters.begin(), type.parameters.end(),
                        types.begin(),
                        [] (const auto& variant) -> llvm::Type* {
                            if (std::holds_alternative<Declaration>(variant)) {
-                               return llvm_type(std::get<Declaration>(variant).type);
+                                return llvm_type(std::get<Declaration>(variant).type);
                            }
                            if (std::holds_alternative<Type>(variant)) {
-                               return llvm_type(std::get<Type>(variant));
+                                return llvm_type(std::get<Type>(variant));
                            }
+
                            return nullptr;
                        });
 
-        return llvm::StructType::create(context, types);
+        llvm::StructType* st = llvm::StructType::create(context, types);
+
+        // TODO: default name for anonymous struct
+        for (size_t i = 0; i < type.parameters.size(); ++i) {
+            if (!std::holds_alternative<Declaration>(type.parameters[i])) {
+                return nullptr;
+            }
+            const std::string& name = std::get<Declaration>(type.parameters[i]).variable.name;
+            struct_field_indices[st->getName().str()][name] = builder.getInt32(i);
+        }
+
+        return st;
     }
     else if (type.name == "Pointer") {
         // TODO: segfaulting when params is empty
@@ -135,8 +149,6 @@ llvm::Type* llvm_type(const Type& type) {
             || !std::holds_alternative<Type>(type.parameters[0])
             || !std::holds_alternative<size_t>(type.parameters[1]))
         {
-            std::cerr << type.parameters.size() << std::flush << std::get<Type>(type.parameters[0]).name
-                << std::flush << std::get<size_t>(type.parameters[1])<< std::endl;
             return (llvm::Type*) error("`Array` expects 2 parameters: (value type, size)");
         }
         // TODO: address space?
@@ -201,6 +213,43 @@ llvm::Value* emit_expr(const Invocation& invoc, bool addr) {
         // TODO (?): forbid assignment as expression
         return ptr;
     }
+    else if (invoc.name == ".") {
+        if (invoc.args.size() != 2) {
+            return error("too many arguments to field access");
+        }
+        if (!std::holds_alternative<Variable>(invoc.args[1].value)) {
+            return error("invalid field name");
+        }
+        const std::string& field_name = std::get<Variable>(invoc.args[1].value).name;
+        llvm::Value* struct_ptr = emit_expr(invoc.args[0], true);
+        if (!struct_ptr) {
+            return error("bad struct");
+        }
+        //return error("field access not supported");
+        // TODO access other fields besides first
+        auto at = llvm::cast<llvm::ArrayType>(struct_ptr->getType());
+        auto st = llvm::cast<llvm::StructType>(at->getElementType());
+
+        auto it1 = struct_field_indices.find(st->getName().str());
+        if (it1 == struct_field_indices.end()) {
+            return error("no such struct type");
+        }
+        const auto& field_indices = it1->second;
+        auto it2 = field_indices.find(field_name);
+        if (it2 == field_indices.end()) {
+            return error("no such field");
+        }
+        llvm::ConstantInt* field_index = it2->second;
+        std::vector<llvm::Value*> indices = {
+            builder.getInt64(0), field_index
+        };
+        llvm::Value* field_ptr = builder.CreateGEP(struct_ptr, llvm::ArrayRef(indices));
+        if (addr) {
+            return field_ptr;
+        }
+
+        return builder.CreateLoad(field_ptr);
+    }
     else if (invoc.name == "address") {
         if (invoc.args.size() != 1) {
             return error("`address` expects 1 parameter: (variable)");
@@ -212,7 +261,6 @@ llvm::Value* emit_expr(const Invocation& invoc, bool addr) {
         if (invoc.args.size() != 1) {
             return error("`deref` expects 1 parameter");
         }
-        // TODO: false?
         llvm::Value* v = emit_expr(invoc.args[0]);
         if (!v) {
             return error("bad deref parameter");
@@ -294,7 +342,6 @@ llvm::Value* emit_expr(const Invocation& invoc, bool addr) {
 
     return builder.CreateCall(callee, llvm_args);	
 }
-
 llvm::Value* emit_expr(const Expression& expr, bool addr) {
     return std::visit([addr] (auto& x) { return emit_expr(x, addr); }, expr.value);
 }
@@ -545,8 +592,15 @@ bool emit_stmt(const Typedef& def) {
         return false;
     }
     st->setName(def.name);
+    for (size_t i = 0; i < def.type.parameters.size(); ++i) {
+            if (!std::holds_alternative<Declaration>(def.type.parameters[i])) {
+                error("non-declaration in struct parameters");
+                return false;
+            }
+            const std::string& name = std::get<Declaration>(def.type.parameters[i]).variable.name;
+            struct_field_indices[st->getName().str()][name] = builder.getInt32(i);
+        }
     type_table.add(Type{def.name}, t);
-
     return true;
 }
 

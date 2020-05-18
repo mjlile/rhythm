@@ -19,6 +19,11 @@ bool operator==(const Invocation& lhs, const Invocation& rhs) {
            lhs.args == rhs.args;
 }
 
+bool operator==(const FieldAccess& lhs, const FieldAccess &rhs) {
+    return *lhs.record_ptr == *rhs.record_ptr &&
+            lhs.name == rhs.name;
+}
+
 bool operator==(const Expression& lhs, const Expression& rhs) {
     return lhs.value == rhs.value;
 }
@@ -59,6 +64,11 @@ bool operator==(const Return& lhs, const Return& rhs) {
     return lhs.value == rhs.value;
 }
 
+bool operator==(const Typedef& lhs, const Typedef& rhs) {
+    return lhs.name == rhs.name &&
+           lhs.type == rhs.type;
+}
+
 bool operator==(const Statement& lhs, const Statement& rhs) {
     return lhs.value == rhs.value;
 }
@@ -67,4 +77,12 @@ bool operator==(const Statement& lhs, const Statement& rhs) {
 // ordering for std::map
 bool operator<(const Type& lhs, const Type& rhs) {
     return lhs.name < rhs.name || (lhs.name == rhs.name && lhs.parameters < rhs.parameters);
+}
+
+bool operator<(const Declaration& lhs, const Declaration& rhs) {
+    return lhs.variable < rhs.variable || (lhs.variable == rhs.variable && lhs.type < rhs.type);
+}
+
+bool operator<(const Variable& lhs, const Variable& rhs) {
+    return lhs.name < rhs.name;
 }
