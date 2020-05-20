@@ -5,6 +5,7 @@
 #include <variant>
 #include <optional>
 #include <vector>
+#include <map>
 #include <memory>
 
 struct Declaration;
@@ -33,13 +34,9 @@ struct Invocation {
     std::vector<Expression> args;
 };
 
-struct FieldAccess {
-    Expression* record_ptr; // TODO: kinda gross
-    std::string name;
-};
-
 struct Expression {
     std::variant<Literal, Variable, Invocation> value;
+    Type type;
 };
 
      /*-----------.
@@ -93,6 +90,9 @@ struct Statement {
         Conditional, WhileLoop, Procedure, Return, Typedef> value;
 };
 
+extern std::map<std::string, Declaration> variable_definitions;
+extern std::map<std::string, Procedure>  procedure_definitions;
+
 
 // provide equality operator to make parse tree types regular
 // --------------------------------------------------
@@ -100,7 +100,6 @@ bool operator==(const Type        & lhs, const Type        & rhs);
 bool operator==(const Literal     & lhs, const Literal     & rhs);
 bool operator==(const Variable    & lhs, const Variable    & rhs);
 bool operator==(const Invocation  & lhs, const Invocation  & rhs);
-bool operator==(const FieldAccess & lhs, const FieldAccess & rhs);
 bool operator==(const Expression  & lhs, const Expression  & rhs);
 bool operator==(const Block       & lhs, const Block       & rhs);
 bool operator==(const Declaration & lhs, const Declaration & rhs);

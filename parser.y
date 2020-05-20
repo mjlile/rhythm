@@ -6,7 +6,7 @@
     #include <map>
     #include "parse_tree.hpp"
     #include "parser.hpp"
-    #include "types.hpp"
+    #include "type_system.hpp"
     extern int yylex();
     int line_num = 1;
     void yyerror(const char *s) { printf("ERROR: %s (line %i)\n", s, line_num); }
@@ -24,11 +24,12 @@
         {TOKEN_GE, ">="},
         {TOKEN_LARROW, "<-"},
         {TOKEN_PERCENT, "%"},
-        {TOKEN_DOT, "."}
+        {TOKEN_DOT, "."},
+        {TOKEN_AND, "&&"},
+        {TOKEN_OR, "||"}
     };
 
     Expression* operator_to_invocation(int op_token, Expression* expr1, Expression* expr2 = nullptr) {
-        // C++ style operator__ e.g. operator+, operator()
         std::string name = op_to_string[op_token];
         std::vector<Expression> args;
         args.push_back(*expr1);
@@ -63,13 +64,13 @@
 
 %token <string> TOKEN_IDENT TOKEN_TYPE TOKEN_INT TOKEN_REAL TOKEN_STR
 
-%token <token> TOKEN_EOL TOKEN_EQ TOKEN_NE TOKEN_LT TOKEN_LE TOKEN_GT
+%token <token> TOKEN_EOL TOKEN_EQ TOKEN_NE TOKEN_LT TOKEN_LE TOKEN_GT TOKEN_AND TOKEN_OR
 %token <token> TOKEN_GE TOKEN_LPAREN TOKEN_RPAREN TOKEN_LBRACE TOKEN_RBRACE
 %token <token> TOKEN_LBRACK TOKEN_RBRACK TOKEN_LARROW TOKEN_RARROW TOKEN_DOT TOKEN_COMMA
 %token <token> TOKEN_COLON TOKEN_BANG TOKEN_PLUS TOKEN_MINUS TOKEN_STAR TOKEN_SLASH TOKEN_PERCENT
 /* keywords */
 %token <token> TOKEN_RETURN TOKEN_IF TOKEN_WHILE TOKEN_DO TOKEN_TYPEDEF
-%token <token> TOKEN_AND TOKEN_OR TOKEN_PROC TOKEN_IMPORT TOKEN_LET
+%token <token> TOKEN_PROC TOKEN_IMPORT TOKEN_LET
 
 %type <type> type
 %type <type_param_list> type_param_list
@@ -134,7 +135,6 @@ statement_list  : statement eol
 statement       : expression  { $$ = new Statement{*$1}; }
                 | declaration { $$ = new Statement{*$1}; }
                 | assignment  { $$ = new Statement{*$1}; }
-                | invocation  { $$ = new Statement{Expression{*$1}}; }
                 | import      { $$ = new Statement{*$1}; }
                 | type_def    { $$ = new Statement{*$1}; delete $1; }
                 | control
@@ -169,12 +169,14 @@ invocation      : TOKEN_IDENT TOKEN_LPAREN expr_list TOKEN_RPAREN
 declaration     : TOKEN_IDENT type
                     {
                         $$ = new Declaration{*$1, Type{*$2}};
+                        variable_definitions[*$1] = *$$;
                         delete $1;
                         delete $2;
                     }
                 | TOKEN_IDENT type TOKEN_LARROW expression
                     {
                         $$ = new Declaration{*$1, Type{*$2}, *$4};
+                        variable_definitions[*$1] = *$$;
                         delete $1;
                         delete $2;
                         delete $4;
@@ -216,6 +218,7 @@ while_stmt      : TOKEN_WHILE expression TOKEN_LBRACE block TOKEN_RBRACE
 procedure       : TOKEN_PROC TOKEN_IDENT parameters type TOKEN_LBRACE block TOKEN_RBRACE
                     {
                         $$ = new Procedure{*$2, *$3, *$4, *$6};
+                        procedure_definitions[*$2] = *$$;
                         delete $2;
                         delete $3;
                         delete $4;
@@ -224,7 +227,8 @@ procedure       : TOKEN_PROC TOKEN_IDENT parameters type TOKEN_LBRACE block TOKE
                 | TOKEN_PROC TOKEN_IDENT parameters TOKEN_LBRACE block TOKEN_RBRACE
                     {
                         // void procedure
-                        $$ = new Procedure{*$2, *$3, type::void0, *$5};
+                        $$ = new Procedure{*$2, *$3, TypeSystem::Intrinsics::void0, *$5};
+                        procedure_definitions[*$2] = *$$;
                         delete $2;
                         delete $3;
                         delete $5;

@@ -16,7 +16,8 @@
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Verifier.h"
 #include "parse_tree.hpp"
-#include "types.hpp"
+#include "type_system.hpp"
+#include "llvm_intrinsics.hpp"
 #include "symbol_table.hpp"
 
 llvm::LLVMContext context;
@@ -27,44 +28,22 @@ SymbolTable<Variable, llvm::AllocaInst> variable_table;
 SymbolTable<Type, llvm::Type> type_table;
 std::map<std::string, std::map<std::string, llvm::ConstantInt*>> struct_field_indices;
 
-// built in binary operations
-std::map<const std::string, std::function<llvm::Value* (llvm::Value*, llvm::Value*)>> binary_ops = {
-    {"+",  [](llvm::Value* l, llvm::Value* r) { return builder.CreateAdd    (l, r); } },
-    {"-",  [](llvm::Value* l, llvm::Value* r) { return builder.CreateSub    (l, r); } },
-    {"*",  [](llvm::Value* l, llvm::Value* r) { return builder.CreateMul    (l, r); } },
-    {"/",  [](llvm::Value* l, llvm::Value* r) { return builder.CreateSDiv   (l, r); } },
-    {"%",  [](llvm::Value* l, llvm::Value* r) { return builder.CreateSRem   (l, r); } },
-    {"=",  [](llvm::Value* l, llvm::Value* r) { return builder.CreateICmpEQ (l, r); } },
-    {"!=", [](llvm::Value* l, llvm::Value* r) { return builder.CreateICmpNE (l, r); } },
-    {"<",  [](llvm::Value* l, llvm::Value* r) { return builder.CreateICmpSLT(l, r); } },
-    {"<=", [](llvm::Value* l, llvm::Value* r) { return builder.CreateICmpSLE(l, r); } },
-    {">",  [](llvm::Value* l, llvm::Value* r) { return builder.CreateICmpSGT(l, r); } },
-    {">=", [](llvm::Value* l, llvm::Value* r) { return builder.CreateICmpSGE(l, r); } }
+std::map<Type, llvm::Type*> llvm_types = {
+    { TypeSystem::Intrinsics::boolean, llvm::Type::getInt8Ty   (context) },
+    { TypeSystem::Intrinsics::integer, llvm::Type::getInt32Ty  (context) },
+    { TypeSystem::Intrinsics::int8,    llvm::Type::getInt8Ty   (context) },
+    { TypeSystem::Intrinsics::int16,   llvm::Type::getInt16Ty  (context) },
+    { TypeSystem::Intrinsics::int32,   llvm::Type::getInt32Ty  (context) },
+    { TypeSystem::Intrinsics::int64,   llvm::Type::getInt64Ty  (context) },
+    { TypeSystem::Intrinsics::natural, llvm::Type::getInt32Ty  (context) },
+    { TypeSystem::Intrinsics::nat8,    llvm::Type::getInt8Ty   (context) },
+    { TypeSystem::Intrinsics::nat16,   llvm::Type::getInt16Ty  (context) },
+    { TypeSystem::Intrinsics::nat32,   llvm::Type::getInt32Ty  (context) },
+    { TypeSystem::Intrinsics::nat64,   llvm::Type::getInt64Ty  (context) },
+    { TypeSystem::Intrinsics::float32, llvm::Type::getFloatTy  (context) },
+    { TypeSystem::Intrinsics::float64, llvm::Type::getDoubleTy (context) },
+    { TypeSystem::Intrinsics::void0,   llvm::Type::getVoidTy   (context) },
 };
-
-std::map<Type, llvm::Type*> types = {
-    // boolean is 1 byte, but llvm uses int1 TODO?
-    { type::boolean, llvm::Type::getInt8Ty   (context) },
-    // integer types
-    { type::integer, llvm::Type::getInt32Ty  (context) },
-    { type::int8,    llvm::Type::getInt8Ty   (context) },
-    { type::int16,   llvm::Type::getInt16Ty  (context) },
-    { type::int32,   llvm::Type::getInt32Ty  (context) },
-    { type::int64,   llvm::Type::getInt64Ty  (context) },
-    // natural number types
-    // llvm only distinguishes signed/unsigned for relevant operations
-    { type::natural, llvm::Type::getInt32Ty  (context) },
-    { type::nat8,    llvm::Type::getInt8Ty   (context) },
-    { type::nat16,   llvm::Type::getInt16Ty  (context) },
-    { type::nat32,   llvm::Type::getInt32Ty  (context) },
-    { type::nat64,   llvm::Type::getInt64Ty  (context) },
-    // floating point types
-    { type::float32, llvm::Type::getFloatTy  (context) },
-    { type::float64, llvm::Type::getDoubleTy (context) },
-
-    { type::void0,   llvm::Type::getVoidTy   (context) }
-};
-
 
 
 // create_entry_alloca - Create an alloca instruction in the entry block of
@@ -104,7 +83,11 @@ llvm::Type* llvm_type(const Type& type) {
         if (t) {
             return t;
         }
-        return types[type];
+        if (auto it = llvm_types.find(type); it != llvm_types.end()) {
+            return it->second;
+        }
+        
+        return (llvm::Type*) error("unknown type " + type.name);
     }
 
     if (type.name == "Struct") {
@@ -172,10 +155,10 @@ llvm::Value* emit_expr(const Literal& lit, bool addr) {
             llvm::Type::getInt8PtrTy(context));
     case Literal::Type::integer:
         // TODO: hex literals
-        return llvm::ConstantInt::get(static_cast<llvm::IntegerType*>(types[type::integer]),
+        return llvm::ConstantInt::get(static_cast<llvm::IntegerType*>(llvm_types.at(TypeSystem::Intrinsics::integer)),
             lit.value, 10);
     case Literal::Type::rational:
-        return llvm::ConstantFP::get(types[type::float64], lit.value);
+        return llvm::ConstantFP::get(llvm_types.at(TypeSystem::Intrinsics::float64), lit.value);
     }
     return error("invalid literal type");
 }
@@ -184,7 +167,7 @@ llvm::Value* emit_expr(const Variable& variable, bool addr) {
     // Look this variable up in the function.
     llvm::AllocaInst *v = variable_table.find(variable);
     if (!v) {
-        return error("unknown variable \"" + variable.name + "\"");
+        return error("unknown variable `" + variable.name + "`");
     }
     if (addr) {
         return v;
@@ -195,7 +178,18 @@ llvm::Value* emit_expr(const Variable& variable, bool addr) {
 }
 
 llvm::Value* emit_expr(const Invocation& invoc, bool addr) {	
-    // assignment must be handles uniquely
+    // built-in op
+    if (TypeSystem::is_intrinsic_op(invoc)) {
+        if (invoc.args.size() != 2) {
+            return error("too many arguments to intrinsic operation");
+        }
+        llvm::Value *lhs = emit_expr(invoc.args[0]);
+        llvm::Value *rhs = emit_expr(invoc.args[1]);
+        if (!lhs || !rhs) { return error("bad input"); }
+        return intrinsic_op(invoc, builder, lhs, rhs);
+    }
+
+    // assignment must be handled uniquely
     if (invoc.name == "<-") {
         if (invoc.args.size() != 2) {
             return error("too many arguments to assignment");
@@ -277,12 +271,6 @@ llvm::Value* emit_expr(const Invocation& invoc, bool addr) {
         }
         llvm::Value* arr = emit_expr(invoc.args[0], true);
         
-        /*
-        if (!arr->getType()->isArrayTy()) {
-            return error("`begin` expects 1 parameter: (range). Only array types are currently supported");
-        }*/
-        // returning pointer to arr still?
-        //return builder.CreateGEP(arr, builder.getInt32(0));
         // TODO: generalize for arrays of any type
         return builder.CreateBitCast(arr, llvm::Type::getInt32PtrTy(context));
     }
@@ -302,18 +290,12 @@ llvm::Value* emit_expr(const Invocation& invoc, bool addr) {
         if (invoc.args.size() != 1) {
             return error("`successor` expects 1 parameter: (iterator)");
         }
-
+        // TODO: integral and floating point types
         llvm::Value* ptr = emit_expr(invoc.args[0]);
         return builder.CreateGEP(ptr, builder.getInt32(1));
     }
 
-    if (auto it = binary_ops.find(invoc.name); it != binary_ops.end()) {
-        llvm::Value *l = emit_expr(invoc.args[0]);
-        llvm::Value *r = emit_expr(invoc.args[1]);
-        if (!l || !r) { return error("bad input"); }
-        return it->second(l, r);
-    }
-
+    // other defined function
     llvm::Function *callee = module->getFunction(invoc.name);	
     if (!callee) {	
         return error("call to unknown procedure " + invoc.name);	
@@ -520,8 +502,14 @@ bool emit_stmt(const Procedure& proc) {
                    [](const Declaration& t) {
                        return llvm_type(t.type);
                    });
-
+    if (std::find(param_types.begin(), param_types.end(), nullptr) != param_types.end()) {
+        return error("bas parameter type");
+    }
+    
     llvm::Type* ret_type = llvm_type(proc.return_type);
+    if (!ret_type) {
+        return error("bad return type");
+    }
     llvm::FunctionType* ft = llvm::FunctionType::get(ret_type, param_types, false);
 
     llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, proc.name, module.get());	
@@ -560,7 +548,7 @@ bool emit_stmt(const Procedure& proc) {
     variable_table.pop_frame();
 
     // add implicit return at the end of void function
-    if (proc.return_type == type::void0) {
+    if (proc.return_type == TypeSystem::Intrinsics::void0) {
         builder.CreateRetVoid();
     }
 

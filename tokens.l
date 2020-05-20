@@ -40,8 +40,6 @@ extern "C" int yywrap() { return true; }
 "if"                    return make_token(TOKEN_IF);
 "while"                 return make_token(TOKEN_WHILE);
 "proc"                  return make_token(TOKEN_PROC);
-"and"                   return make_token(TOKEN_AND);
-"or"                    return make_token(TOKEN_OR);
 "typedef"               return make_token(TOKEN_TYPEDEF);
 [a-z][a-zA-Z0-9_]*      return make_token(TOKEN_IDENT);
 [A-Z][a-zA-Z0-9_]*      return make_token(TOKEN_TYPE);
@@ -54,6 +52,8 @@ extern "C" int yywrap() { return true; }
 "<="                    return make_token(TOKEN_LE);
 ">"                     return make_token(TOKEN_GT);
 ">="                    return make_token(TOKEN_GE);
+"&&"                    return make_token(TOKEN_AND);
+"||"                    return make_token(TOKEN_OR);
 "("                     return make_token(TOKEN_LPAREN);
 ")"                     return make_token(TOKEN_RPAREN);
 "{"                     return make_token(TOKEN_LBRACE);

@@ -1,7 +1,7 @@
 LLVM_ARGS=`llvm-config --cxxflags --ldflags --libs  --system-libs` 
-CC=g++-7 ${LLVM_ARGS} -std=c++17 -pthread
+CC=g++-7 ${LLVM_ARGS} -std=c++17 -pthread -g3 -O0
 
-RHYTHM_SOURCES=main.cpp tokens.cpp parser.cpp parse_tree.cpp ir_emitter.cpp
+RHYTHM_SOURCES=main.cpp tokens.cpp parser.cpp parse_tree.cpp ir_emitter.cpp llvm_intrinsics.cpp type_system.cpp
 RHYTHM_OBJS=${RHYTHM_SOURCES:.cpp=.o}
 
 all: rhythmc
@@ -28,4 +28,4 @@ tokens.o: tokens.cpp
 	${CC} -c $<
 
 rhythmc: ${RHYTHM_OBJS}
-	g++-7 -o $@ ${RHYTHM_OBJS} -g3 ${LLVM_ARGS} -std=c++17 -pthread
+	g++-7 -o $@ ${RHYTHM_OBJS} -g3 -O0 ${LLVM_ARGS} -std=c++17 -pthread

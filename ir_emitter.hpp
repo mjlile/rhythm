@@ -10,6 +10,9 @@
 #include "parse_tree.hpp"
 
 extern std::unique_ptr<llvm::Module> module;
+extern llvm::LLVMContext context;
+extern std::map<Type, llvm::Type*> llvm_types;
+
 
 void cstdlib();
 llvm::Type*  llvm_type(const Type& type);

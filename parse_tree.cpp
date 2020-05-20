@@ -1,5 +1,8 @@
 #include "parse_tree.hpp"
 
+std::map<std::string, Declaration> variable_definitions;
+std::map<std::string, Procedure> procedure_definitions;
+
 // equality
 bool operator==(const Type& lhs, const Type& rhs) {
     return lhs.name == rhs.name;
@@ -17,11 +20,6 @@ bool operator==(const Variable& lhs, const Variable& rhs) {
 bool operator==(const Invocation& lhs, const Invocation& rhs) {
     return lhs.name == rhs.name &&
            lhs.args == rhs.args;
-}
-
-bool operator==(const FieldAccess& lhs, const FieldAccess &rhs) {
-    return *lhs.record_ptr == *rhs.record_ptr &&
-            lhs.name == rhs.name;
 }
 
 bool operator==(const Expression& lhs, const Expression& rhs) {
