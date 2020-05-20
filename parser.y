@@ -134,7 +134,6 @@ statement_list  : statement eol
 statement       : expression  { $$ = new Statement{*$1}; }
                 | declaration { $$ = new Statement{*$1}; }
                 | assignment  { $$ = new Statement{*$1}; }
-                | invocation  { $$ = new Statement{Expression{*$1}}; }
                 | import      { $$ = new Statement{*$1}; }
                 | type_def    { $$ = new Statement{*$1}; delete $1; }
                 | control
