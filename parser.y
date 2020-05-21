@@ -320,7 +320,7 @@ primary         : literal { $$ = new Expression{*$1}; delete $1; }
                 | TOKEN_IDENT { $$ = new Expression{Variable{*$1}}; delete $1; }
                 | invocation { $$ = new Expression{*$1}; delete $1; }
                 | TOKEN_LPAREN expression TOKEN_RPAREN {
-                    $$ = operator_to_invocation($1, $2); // TODO: typo?
+                    $$ = $2;
                 }
                 | TOKEN_TYPE TOKEN_BANG expression {
                     // type cast takes ownership of expression
