@@ -7,6 +7,10 @@
 #include "llvm/IR/IRBuilder.h"
 
 // returns the value of the intrinsic operation (e.g. +, %, <) applied to lhs and rhs (e.g. lhs + rhs)
+// binary op
 llvm::Value* intrinsic_op(const Invocation& invoc, llvm::IRBuilder<>& builder, llvm::Value* lhs, llvm::Value* rhs);
+// unary op (-abc)
+llvm::Value* intrinsic_op(const Invocation& invoc, llvm::IRBuilder<>& builder, llvm::Value* v);
+
 
 #endif

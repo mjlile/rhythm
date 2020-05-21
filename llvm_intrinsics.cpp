@@ -1,4 +1,5 @@
 #include <map>
+#include <iostream>
 #include "llvm_intrinsics.hpp"
 #include "type_system.hpp"
 
@@ -10,7 +11,32 @@ bool is_in(First&& first, T&& ... t)
     return ((first == t) || ...);
 }
 
+
+static llvm::Value *error(std::string_view str) {
+    std::cerr << str << std::endl;
+    return nullptr;
+}
+
+llvm::Value* intrinsic_op(const Invocation& invoc, llvm::IRBuilder<>& builder, llvm::Value* v) {
+    assert(invoc.args.size() == 1);
+    using namespace TypeSystem;
+    if (invoc.name == "-") {
+        if (is_integral(type_of(invoc))) {
+            return builder.CreateNeg(v);
+        }
+        else if (is_floating_point(type_of(invoc))) {
+            return builder.CreateFNeg(v);
+        }
+        else {
+            assert(false);
+        }
+    }
+
+    return error("unknown unary intrinsic op `" + invoc.name + "` or invalid parameter types");
+}
+
 llvm::Value* intrinsic_op(const Invocation& invoc, llvm::IRBuilder<>& builder, llvm::Value* lhs, llvm::Value* rhs) {
+    assert(invoc.args.size() == 2);
     using namespace TypeSystem;
     if (invoc.name == "+") {
         if (is_integral(type_of(invoc))) {

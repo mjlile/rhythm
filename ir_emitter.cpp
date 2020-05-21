@@ -180,6 +180,13 @@ llvm::Value* emit_expr(const Variable& variable, bool addr) {
 llvm::Value* emit_expr(const Invocation& invoc, bool addr) {	
     // built-in op
     if (TypeSystem::is_intrinsic_op(invoc)) {
+        if (invoc.args.size() == 1) {
+            llvm::Value* v = emit_expr(invoc.args[0]);
+            if (!v) {
+                return error("bad arguments to `" + invoc.name + "`");
+            }
+            return intrinsic_op(invoc, builder, v);
+        }
         if (invoc.args.size() != 2) {
             return error("too many arguments to intrinsic operation");
         }
