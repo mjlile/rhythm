@@ -319,10 +319,14 @@ prefix          : primary
 primary         : literal { $$ = new Expression{*$1}; delete $1; }
                 | TOKEN_IDENT { $$ = new Expression{Variable{*$1}}; delete $1; }
                 | invocation { $$ = new Expression{*$1}; delete $1; }
-                | TOKEN_LPAREN expression TOKEN_RPAREN
-                    {
-                        $$ = operator_to_invocation($1, $2);
-                    }
+                | TOKEN_LPAREN expression TOKEN_RPAREN {
+                    $$ = operator_to_invocation($1, $2); // TODO: typo?
+                }
+                | TOKEN_TYPE TOKEN_BANG expression {
+                    // type cast takes ownership of expression
+                    $$ = new Expression{TypeCast{Type{*$1}, std::shared_ptr<Expression>($3)}};
+                    delete $1;
+                }
                 ;
 
 type_param      : type {

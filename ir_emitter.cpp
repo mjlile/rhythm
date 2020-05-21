@@ -324,6 +324,70 @@ llvm::Value* emit_expr(const Invocation& invoc, bool addr) {
 
     return builder.CreateCall(callee, llvm_args);	
 }
+
+llvm::Value* emit_expr(const TypeCast& cast, bool addr) {
+    Type from = TypeSystem::type_of(*cast.expr);
+    const Type& to = cast.type;
+    llvm::Value* v = emit_expr(*cast.expr, addr);
+    llvm::Type* t = llvm_type(to);
+
+    if (TypeSystem::is_unsigned_integral(from)) {
+        if (TypeSystem::is_unsigned_integral(to)) {
+            return builder.CreateZExtOrTrunc(v, t);
+        }
+        else if (TypeSystem::is_signed_integral(to)) {
+            return builder.CreateZExtOrTrunc(v, t);
+        }
+        else if (TypeSystem::is_floating_point(to)) {
+            return builder.CreateUIToFP(v, t);
+        }
+    }
+    else if (TypeSystem::is_signed_integral(from)) {
+        if (TypeSystem::is_unsigned_integral(to)) {
+            return builder.CreateSExtOrTrunc(v, t); // TODO
+        }
+        else if (TypeSystem::is_signed_integral(to)) {
+            return builder.CreateSExtOrTrunc(v, t);
+        }
+        else if (TypeSystem::is_floating_point(to)) {
+            return builder.CreateSIToFP(v, t);
+        }
+    }
+    else if (TypeSystem::is_floating_point(from)) {
+        if (TypeSystem::is_unsigned_integral(to)) {
+            return builder.CreateFPToUI(v, t);
+        }
+        else if (TypeSystem::is_signed_integral(to)) {
+            return builder.CreateFPToSI(v, t);
+        }
+        else if (TypeSystem::is_floating_point(to)) {
+            if (TypeSystem::size_of(from) < TypeSystem::size_of(to)) {
+                return builder.CreateFPTrunc(v, t);
+            }
+            else {
+                return builder.CreateFPExt(v, t);
+            }
+        }
+    }
+
+    // pointers
+    if (TypeSystem::is_pointer(from)) {
+        if (TypeSystem::is_pointer(to)) {
+            return builder.CreateBitCast(v, t);
+        }
+        else if (TypeSystem::is_integral(to)) {
+            return builder.CreatePtrToInt(v, t);
+        }
+    }
+    else if (TypeSystem::is_integral(from)) {
+        if (TypeSystem::is_pointer(to)) {
+            return builder.CreateIntToPtr(v, t);
+        }
+    }
+
+    return error("unknown conversion");
+}
+
 llvm::Value* emit_expr(const Expression& expr, bool addr) {
     return std::visit([addr] (auto& x) { return emit_expr(x, addr); }, expr.value);
 }

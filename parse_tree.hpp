@@ -34,9 +34,13 @@ struct Invocation {
     std::vector<Expression> args;
 };
 
-struct Expression {
-    std::variant<Literal, Variable, Invocation> value;
+struct TypeCast {
     Type type;
+    std::shared_ptr<Expression> expr;
+};
+
+struct Expression {
+    std::variant<Literal, Variable, Invocation, TypeCast> value;
 };
 
      /*-----------.
@@ -100,6 +104,7 @@ bool operator==(const Type        & lhs, const Type        & rhs);
 bool operator==(const Literal     & lhs, const Literal     & rhs);
 bool operator==(const Variable    & lhs, const Variable    & rhs);
 bool operator==(const Invocation  & lhs, const Invocation  & rhs);
+bool operator==(const TypeCast    & lhs, const TypeCast    & rhs);
 bool operator==(const Expression  & lhs, const Expression  & rhs);
 bool operator==(const Block       & lhs, const Block       & rhs);
 bool operator==(const Declaration & lhs, const Declaration & rhs);

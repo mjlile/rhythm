@@ -45,7 +45,15 @@ Type make_structure(const std::vector<Declaration> fields);
 Type type_of(const Expression& expr);
 Type type_of(const Variable& var);
 Type type_of(const Invocation& invoc);
+Type type_of(const TypeCast& cast);
 Type type_of(const Literal& lit);
+
+size_t size_of(const Type& t);
+Type value_type(const Type& t);
+// precondition: is_structure(struct_type)
+std::vector<Type> field_types(const Type& struct_type);
+// precondition: is_array(array_type)
+size_t num_elements(const Type& array_type);
 
 // returns true if the procedure is intrinsic and its parameters are all intrinsic
 bool is_intrinsic_op(const Invocation& invoc);
@@ -57,6 +65,7 @@ bool is_integral         (const Type& t);
 bool is_floating_point   (const Type& t);
 bool is_array            (const Type& t);
 bool is_structure        (const Type& t);
+bool is_pointer          (const Type& t);
 bool is_aggregate        (const Type& t);
 
 

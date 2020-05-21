@@ -1,6 +1,9 @@
 #include "type_system.hpp"
 #include <iostream>
 #include <cassert>
+#include <numeric>
+
+constexpr size_t pointer_size = sizeof(int*);
 
 namespace TypeSystem {
 
@@ -84,6 +87,10 @@ Type type_of(const Invocation& invoc) {
     return it->second.return_type;
 }
 
+Type type_of(const TypeCast& cast) {
+    return cast.type;
+}
+
 // TODO: typeless literals
 Type type_of(const Literal& lit) {
     switch (lit.type) {
@@ -98,6 +105,72 @@ Type type_of(const Literal& lit) {
         assert(false);
     }
     return Type{};
+}
+
+std::map<Type, size_t> type_sizes = {
+    {Intrinsics::boolean, 1},
+    {Intrinsics::integer, 4},
+    {Intrinsics::int8   , 1},
+    {Intrinsics::int16  , 2},
+    {Intrinsics::int32  , 4},
+    {Intrinsics::int64  , 8},
+    {Intrinsics::natural, 4},
+    {Intrinsics::nat8   , 1},
+    {Intrinsics::nat16  , 2},
+    {Intrinsics::nat32  , 4},
+    {Intrinsics::nat64  , 8},
+    {Intrinsics::float32, 4},
+    {Intrinsics::float64, 8}
+};
+
+size_t size_of(const Type& t) {
+    if (auto it = type_sizes.find(t); it != type_sizes.end()) {
+        return it->second;
+    }
+
+    if (is_pointer(t)) {
+        return pointer_size;
+    }
+
+    if (is_array(t)) {
+        return num_elements(t) * size_of(value_type(t));
+    }
+
+    if (is_structure(t)) {
+        std::vector<Type> types = field_types(t);
+        return std::accumulate(types.begin(), types.end(), 0,
+                    [](size_t sz, const Type& t2) {
+                        return sz + size_of(t2);
+                    });
+    }
+
+    assert(false);
+    return -1;
+}
+
+Type value_type(const Type& t) {
+    if (is_array(t) || is_pointer(t)) {
+        return std::get<Type>(t.parameters[0]);
+    }
+
+    return t;
+}
+
+std::vector<Type> field_types(const Type& struct_type) {
+    assert(is_structure(struct_type));
+
+    std::vector<Type> types(struct_type.parameters.size());
+    std::transform(struct_type.parameters.begin(), struct_type.parameters.end(),
+                   types.begin(),
+                   [](const auto& var) {
+                       return std::get<Type>(var);
+                   });
+    return types;
+}
+
+size_t num_elements(const Type& array_type) {
+    assert(is_array(array_type));
+    return std::get<size_t>(array_type.parameters[1]);
 }
 
 template<typename First, typename ... T>
@@ -143,8 +216,11 @@ bool is_floating_point(const Type& t) {
     return is_in(t, float32, float64);
 }
 
+bool is_pointer(const Type& t) { return t.name == Intrinsics::pointer; }
+
 bool is_array(const Type& t) { return t.name == Intrinsics::array; }
 bool is_structure(const Type& t) { return t.name == Intrinsics::structure; }
+
 bool is_aggregate(const Type& t) { return is_array(t) || is_structure(t); }
 
 }

@@ -20,6 +20,7 @@ llvm::Type*  llvm_type(const Type& type);
 llvm::Value* emit_expr(const Literal    & lit,   bool addr = false);
 llvm::Value* emit_expr(const Variable   & var,   bool addr = false);
 llvm::Value* emit_expr(const Invocation & invoc, bool addr = false);
+llvm::Value* emit_expr(const TypeCast   & cast,  bool addr = false);
 llvm::Value* emit_expr(const Expression & expr,  bool addr = false);
 
 bool emit_stmt(const Expression  & expr );

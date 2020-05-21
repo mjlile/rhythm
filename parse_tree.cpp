@@ -22,6 +22,11 @@ bool operator==(const Invocation& lhs, const Invocation& rhs) {
            lhs.args == rhs.args;
 }
 
+bool operator==(const TypeCast& lhs, const TypeCast& rhs) {
+    return lhs.type == rhs.type &&
+          *lhs.expr == *rhs.expr;
+}
+
 bool operator==(const Expression& lhs, const Expression& rhs) {
     return lhs.value == rhs.value;
 }
