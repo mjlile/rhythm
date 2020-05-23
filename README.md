@@ -4,10 +4,10 @@ Rhythm is a very early work-in-progress language intended to promote [generic pr
 
 Current Status
 --------------
-This repo is only a basic implementation at the moment, with control flow, operators, user-defined procedures, and a simple type system. The type system supports integers (signed/unsigned, 8/16/32/64 bit), floating point numbers (32 and 64 bit), pointers, arrays, and C-style structures. User-defined procedures can now be overloaded. IO currently relies on C `printf` and `scanf` calls. Rhythm code is compiled to [LLVM](https://llvm.org/) IR, which can then be passed into `clang` for native compilation.
+This repo is only a basic implementation at the moment, with control flow, operators, user-defined procedures, and a simple type system. The type system supports integers (signed/unsigned, 8/16/32/64 bit), floating point numbers (32 and 64 bit), pointers, arrays, and C-style structures. User-defined procedures can now be overloaded. I/O currently relies on C `printf` and `scanf` calls. Rhythm code is compiled to [LLVM](https://llvm.org/) IR, which can then be passed into `clang` for native compilation.
 
 ### Goals
-A non-exhaustive list of goals in different areas
+A non-exhaustive list of goals in different areas.
 
 #### Basics
 * Bug fixes
@@ -22,10 +22,10 @@ A non-exhaustive list of goals in different areas
 * Type functions
 * Concepts
 * Pointers to concepts (runtime generics)
-* Extensive library generic components
+* Extensive library of generic components
 
 #### Other Nice Features
-These are features from other languages that I want in my ideal language, but they aren't at the core of what I want Rhythm to be
+These are features from other languages that I would like eventually, but they aren't vital to the core of Rhythm.
 * Algebraic data types (e.g. Rust's enum types, optional)
 * Concurrency (async/await coroutines + Go-style channel communication)
 * Ownership (e.g. Rust)
@@ -35,7 +35,7 @@ Getting Started
 ---------------
 
 ### Prerequisites
-The current Rhythm implementation is written in [Flex](https://github.com/westes/flex/), [Bison](https://www.gnu.org/software/bison/), and [C++17](https://en.cppreference.com/w/cpp/17) for Linux systems. Flex is the GNU implementation of Lex, a lexer generator, while Bison comes from Yacc and is a parser generator. [Clang](https://clang.llvm.org/) is required to compile the LLVM IR to machine code.
+The current Rhythm implementation is written in [Flex](https://github.com/westes/flex/), [Bison](https://www.gnu.org/software/bison/), [LLVM](https://llvm.org/) and [C++17](https://en.cppreference.com/w/cpp/17) for Linux systems. Flex is the GNU implementation of Lex, a lexer generator, while Bison comes from Yacc and is a parser generator. [Clang](https://clang.llvm.org/) is required to compile the LLVM IR to machine code.
 
 ### How to use
 Clone the repo and build with the provided Makefile. `rhythmc` reads from standard input and writes LLVM IR to standard output. This can be piped into the LLVM interpreter (`lli`) or `clang` with IR input mode. `rhythmc.sh` reads from the file in the first parameter and compiles a native binary (optionally to the file specificed after `-o`).
