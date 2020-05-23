@@ -102,7 +102,7 @@ proc iota(f Pointer(Int), l Pointer(Int), initial Int) {
     while f < l {
         deref(f) <- initial
         f <- successor(f)
-        initial <- initial + 1
+        initial <- successor(initial)
     }
 }
 

@@ -293,8 +293,15 @@ llvm::Value* emit_expr(const Invocation& invoc, bool addr) {
             return error("`successor` expects 1 parameter: (iterator)");
         }
         // TODO: integral and floating point types
-        llvm::Value* ptr = emit_expr(invoc.args[0]);
-        return builder.CreateGEP(ptr, builder.getInt32(1));
+        llvm::Value* v = emit_expr(invoc.args[0]);
+        if (TypeSystem::is_pointer(TypeSystem::type_of(invoc.args[0]))) {
+            return builder.CreateGEP(v, builder.getInt32(1));
+        }
+        if (TypeSystem::is_integral(TypeSystem::type_of(invoc.args[0]))) {
+            return builder.CreateAdd(v, builder.getInt32(1));
+        }
+
+        return error("bad type to `successor`");
     }
 
     // built-in op

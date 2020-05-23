@@ -81,6 +81,9 @@ Type type_of(const Invocation& invoc) {
         assert(invoc.args.size() == 1);
         return TypeSystem::Intrinsics::make_pointer(TypeSystem::value_type(TypeSystem::type_of(invoc.args[0])));
     }
+    if (invoc.name == "successor" || invoc.name == "predecessor") {
+        return TypeSystem::type_of(invoc.args[0]);
+    }
 
     // TODO: use input types for overloading
     std::vector<Type> input_types(invoc.args.size());
