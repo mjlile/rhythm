@@ -194,24 +194,6 @@ llvm::Value* emit_expr(const Variable& variable, bool addr) {
 }
 
 llvm::Value* emit_expr(const Invocation& invoc, bool addr) {	
-    // built-in op
-    if (TypeSystem::is_intrinsic_op(invoc)) {
-        if (invoc.args.size() == 1) {
-            llvm::Value* v = emit_expr(invoc.args[0]);
-            if (!v) {
-                return error("bad arguments to `" + invoc.name + "`");
-            }
-            return intrinsic_op(invoc, builder, v);
-        }
-        if (invoc.args.size() != 2) {
-            return error("too many arguments to intrinsic operation");
-        }
-        llvm::Value *lhs = emit_expr(invoc.args[0]);
-        llvm::Value *rhs = emit_expr(invoc.args[1]);
-        if (!lhs || !rhs) { return error("bad input"); }
-        return intrinsic_op(invoc, builder, lhs, rhs);
-    }
-
     // assignment must be handled uniquely
     if (invoc.name == "<-") {
         if (invoc.args.size() != 2) {
@@ -293,21 +275,18 @@ llvm::Value* emit_expr(const Invocation& invoc, bool addr) {
             return error("`begin` expects 1 parameter: (range)");
         }
         llvm::Value* arr = emit_expr(invoc.args[0], true);
-        
+        llvm::Type* value_type = llvm::cast<llvm::ArrayType>(arr->getType())->getElementType()->getArrayElementType();
         // TODO: generalize for arrays of any type
-        return builder.CreateBitCast(arr, llvm::Type::getInt32PtrTy(context));
+        return builder.CreateBitCast(arr, llvm::PointerType::getUnqual(value_type));
     }
     else if (invoc.name == "limit") {
         if (invoc.args.size() != 1) {
             return error("`limit` expects 1 parameter: (range)");
         }
         llvm::Value* arr = emit_expr(invoc.args[0], true);
-        /*
-        if (!llvm::isa<llvm::ArrayType>(arr->getType())) {
-            return error("`limit` expects 1 parameter: (range). Only array types are currently supported");
-        }
-        */
-        return builder.CreateBitCast(builder.CreateGEP(arr, builder.getInt64(1)), llvm::Type::getInt32PtrTy(context));
+        llvm::Type* value_type = llvm::cast<llvm::ArrayType>(arr->getType())->getElementType()->getArrayElementType();
+
+        return builder.CreateBitCast(builder.CreateGEP(arr, builder.getInt64(1)), llvm::PointerType::getUnqual(value_type));
     }
     else if (invoc.name == "successor") {
         if (invoc.args.size() != 1) {
@@ -318,11 +297,30 @@ llvm::Value* emit_expr(const Invocation& invoc, bool addr) {
         return builder.CreateGEP(ptr, builder.getInt32(1));
     }
 
+    // built-in op
+    if (TypeSystem::is_intrinsic_op(invoc)) {
+        if (invoc.args.size() == 1) {
+            llvm::Value* v = emit_expr(invoc.args[0]);
+            if (!v) {
+                return error("bad arguments to `" + invoc.name + "`");
+            }
+            return intrinsic_op(invoc, builder, v);
+        }
+        if (invoc.args.size() != 2) {
+            return error("too many arguments to intrinsic operation");
+        }
+        llvm::Value *lhs = emit_expr(invoc.args[0]);
+        llvm::Value *rhs = emit_expr(invoc.args[1]);
+        if (!lhs || !rhs) { return error("bad input"); }
+        return intrinsic_op(invoc, builder, lhs, rhs);
+    }
+
+
     // other defined function
 
     // TODO: extern c
     std::string name = decorate_name(invoc);
-    if (invoc.name == "printf" || invoc.name == "scanf") {
+    if (TypeSystem::is_intrinsic_op(invoc) || invoc.name == "printf" || invoc.name == "scanf") {
         name = invoc.name;
     }
     llvm::Function *callee = module->getFunction(name);

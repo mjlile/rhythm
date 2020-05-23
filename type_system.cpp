@@ -73,6 +73,14 @@ Type type_of(const Invocation& invoc) {
     if (invoc.name == "printf" || invoc.name == "scanf") {
         return TypeSystem::Intrinsics::integer;
     }
+    if (invoc.name == "deref") {
+        assert(invoc.args.size() == 1);
+        return TypeSystem::value_type(TypeSystem::type_of(invoc.args[0]));
+    }
+    if (invoc.name == "begin" || invoc.name == "limit") {
+        assert(invoc.args.size() == 1);
+        return TypeSystem::Intrinsics::make_pointer(TypeSystem::value_type(TypeSystem::type_of(invoc.args[0])));
+    }
 
     // TODO: use input types for overloading
     std::vector<Type> input_types(invoc.args.size());
@@ -221,7 +229,8 @@ bool is_intrinsic_op(const Invocation& invoc) {
 
 
 bool is_intrinsic(const Type& t) {
-    return is_integral(t) || is_floating_point(t) || t == Intrinsics::boolean;
+    return is_integral(t) || is_floating_point(t) || t == Intrinsics::boolean
+        || is_pointer(t) || is_array(t);
 }
 
 bool is_signed_integral(const Type& t) {
@@ -237,6 +246,14 @@ bool is_unsigned_integral(const Type& t) {
 bool is_integral(const Type& t) {
     return is_signed_integral  (t)
         || is_unsigned_integral(t);
+}
+
+bool is_unsigned_or_ptr(const Type& t) {
+    return is_unsigned_integral(t) || is_pointer(t);
+}
+
+bool is_integral_or_ptr(const Type& t) {
+    return is_integral(t) || is_pointer(t);
 }
 
 bool is_floating_point(const Type& t) {

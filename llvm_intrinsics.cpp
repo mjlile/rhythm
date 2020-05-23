@@ -101,7 +101,7 @@ llvm::Value* intrinsic_op(const Invocation& invoc, llvm::IRBuilder<>& builder, l
         }
     }
     else if (invoc.name == "=") {
-        if (is_integral(type_of(invoc))) {
+        if (is_integral_or_ptr(type_of(invoc))) {
             return builder.CreateICmpEQ(lhs, rhs);
         }
         else if (is_floating_point(type_of(invoc))) {
@@ -112,7 +112,7 @@ llvm::Value* intrinsic_op(const Invocation& invoc, llvm::IRBuilder<>& builder, l
         }
     }
     else if (invoc.name == "!=") {
-        if (is_integral(type_of(invoc))) {
+        if (is_integral_or_ptr(type_of(invoc))) {
             return builder.CreateICmpNE(lhs, rhs);
         }
         else if (is_floating_point(type_of(invoc))) {
@@ -123,7 +123,7 @@ llvm::Value* intrinsic_op(const Invocation& invoc, llvm::IRBuilder<>& builder, l
         }
     }
     else if (invoc.name == "<") {
-        if (is_unsigned_integral(type_of(invoc))) {
+        if (is_unsigned_or_ptr(type_of(invoc))) {
             return builder.CreateICmpULT(lhs, rhs);
         }
         else if (is_signed_integral(type_of(invoc))) {
@@ -137,7 +137,7 @@ llvm::Value* intrinsic_op(const Invocation& invoc, llvm::IRBuilder<>& builder, l
         }
     }
     else if (invoc.name == "<=") {
-        if (is_unsigned_integral(type_of(invoc))) {
+        if (is_unsigned_or_ptr(type_of(invoc))) {
             return builder.CreateICmpULE(lhs, rhs);
         }
         else if (is_signed_integral(type_of(invoc))) {
@@ -151,7 +151,7 @@ llvm::Value* intrinsic_op(const Invocation& invoc, llvm::IRBuilder<>& builder, l
         }
     }
     else if (invoc.name == ">") {
-        if (is_unsigned_integral(type_of(invoc))) {
+        if (is_unsigned_or_ptr(type_of(invoc))) {
             return builder.CreateICmpUGT(lhs, rhs);
         }
         else if (is_signed_integral(type_of(invoc))) {
@@ -165,7 +165,7 @@ llvm::Value* intrinsic_op(const Invocation& invoc, llvm::IRBuilder<>& builder, l
         }
     }
     else if (invoc.name == ">=") {
-        if (is_unsigned_integral(type_of(invoc))) {
+        if (is_unsigned_or_ptr(type_of(invoc))) {
             return builder.CreateICmpUGE(lhs, rhs);
         }
         else if (is_signed_integral(type_of(invoc))) {
