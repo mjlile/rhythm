@@ -4,16 +4,15 @@ Rhythm is a very early work-in-progress language intended to promote [generic pr
 
 Current Status
 --------------
-This repo is only a very basic implementation at the moment. The only supported types are 32 bit signed integers and string literals. Rhythm code is compiled to [LLVM](https://llvm.org/) IR, which can then be passed into `clang` for native compilation.
+This repo is only a basic implementation at the moment, with control flow, operators, user-defined procedures, and a simple type system. The type system supports integers (signed/unsigned, 8/16/32/64 bit), floating point numbers (32 and 64 bit), pointers, arrays, and C-style structures. User-defined procedures can now be overloaded. IO currently relies on C `printf` and `scanf` calls. Rhythm code is compiled to [LLVM](https://llvm.org/) IR, which can then be passed into `clang` for native compilation.
 
 ### Goals
 A non-exhaustive list of goals in different areas
 
 #### Basics
+* Bug fixes
 * Documentation
 * Better error messages
-* Other primitive types (e.g. floating point numbers)
-* C-style structs
 * Modules
 
 #### Generic Programming Features
@@ -23,12 +22,14 @@ A non-exhaustive list of goals in different areas
 * Type functions
 * Concepts
 * Pointers to concepts (runtime generics)
+* Extensive library generic components
 
 #### Other Nice Features
-These are interesting features from other languages that I would want in my ideal language, but they aren't at the core of what I want Rhythm to be
+These are features from other languages that I want in my ideal language, but they aren't at the core of what I want Rhythm to be
 * Algebraic data types (e.g. Rust's enum types, optional)
 * Concurrency (async/await coroutines + Go-style channel communication)
 * Ownership (e.g. Rust)
+* Many more
 
 Getting Started
 ---------------
