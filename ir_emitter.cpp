@@ -77,6 +77,22 @@ llvm::Value *error(std::string_view str) {
     return nullptr;
 }
 
+std::string decorate_name(const Invocation& invoc) {
+    std::string name = invoc.name;
+    for (const auto& expr : invoc.args) {
+        name += "_" + to_string(TypeSystem::type_of(expr));
+    }
+    return name;
+}
+
+std::string decorate_name(const Procedure& proc) {
+    std::string name = proc.name;
+    for (const auto& decl : proc.parameters) {
+        name += "_" + to_string(decl.type);
+    }
+    return name;
+}
+
 llvm::Type* llvm_type(const Type& type) {
     if (type.parameters.empty()) {
         llvm::Type* t = type_table.find(type);
@@ -303,7 +319,13 @@ llvm::Value* emit_expr(const Invocation& invoc, bool addr) {
     }
 
     // other defined function
-    llvm::Function *callee = module->getFunction(invoc.name);	
+
+    // TODO: extern c
+    std::string name = decorate_name(invoc);
+    if (invoc.name == "printf" || invoc.name == "scanf") {
+        name = invoc.name;
+    }
+    llvm::Function *callee = module->getFunction(name);
     if (!callee) {	
         return error("call to unknown procedure " + invoc.name);	
     }	
@@ -486,7 +508,9 @@ bool emit_stmt(const Conditional& cond) {
     llvm::BasicBlock* else_block = llvm::BasicBlock::Create(context, "else");
     llvm::BasicBlock* merge_block = llvm::BasicBlock::Create(context, "ifcont");
 
-    // TODO: what if there's no else block? replace else with merge?
+    if (TypeSystem::type_of(cond.condition) == TypeSystem::Intrinsics::boolean) {
+        condition = builder.CreateICmpNE(condition, builder.getInt8(0)); // convert boolean i8 to i1
+    }
     builder.CreateCondBr(condition, then_block, else_block);
     builder.SetInsertPoint(then_block);
 
@@ -561,7 +585,7 @@ bool emit_stmt(const WhileLoop& loop) {
 bool emit_stmt(const Procedure& proc) {
     // check for function redefinition	
     // TODO: function hoisting?
-    llvm::Function *redef_check = module->getFunction(proc.name);	
+    llvm::Function *redef_check = module->getFunction(decorate_name(proc));	
     if(redef_check && !redef_check->empty()) {	
         error("function " + proc.name + " redefined");	
         return false;
@@ -583,7 +607,7 @@ bool emit_stmt(const Procedure& proc) {
     }
     llvm::FunctionType* ft = llvm::FunctionType::get(ret_type, param_types, false);
 
-    llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, proc.name, module.get());	
+    llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, decorate_name(proc), module.get());	
 
     // Create a new basic block to start insertion into.	
     llvm::BasicBlock *bb = llvm::BasicBlock::Create(context, "entry", f);	

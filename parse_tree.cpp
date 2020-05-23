@@ -1,7 +1,7 @@
 #include "parse_tree.hpp"
 
 std::map<std::string, Declaration> variable_definitions;
-std::map<std::string, Procedure> procedure_definitions;
+std::map<std::string, std::vector<Procedure>> procedure_definitions;
 
 // equality
 bool operator==(const Type& lhs, const Type& rhs) {
@@ -76,6 +76,10 @@ bool operator==(const Statement& lhs, const Statement& rhs) {
     return lhs.value == rhs.value;
 }
 
+// inequality
+bool operator!=(const Type& lhs, const Type& rhs) {
+    return !(lhs == rhs);
+}
 
 // ordering for std::map
 bool operator<(const Type& lhs, const Type& rhs) {
@@ -88,4 +92,28 @@ bool operator<(const Declaration& lhs, const Declaration& rhs) {
 
 bool operator<(const Variable& lhs, const Variable& rhs) {
     return lhs.name < rhs.name;
+}
+
+// others
+std::string to_string(const Type& t) {
+    if (t.parameters.empty()) {
+        return t.name;
+    }
+
+    std::string name = t.name + ".";
+    for (const auto& p : t.parameters) {
+        name += "_";
+        if (std::holds_alternative<Type>(p)) {
+            name += to_string(std::get<Type>(p));
+        }
+        else if (std::holds_alternative<Declaration>(p)) {
+            name += to_string(std::get<Declaration>(p).type);
+        }
+        else {
+            name += std::to_string(std::get<size_t>(p));
+        }
+    }
+
+    name += ".";
+    return name;
 }

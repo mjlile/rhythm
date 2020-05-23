@@ -41,6 +41,8 @@ extern "C" int yywrap() { return true; }
 "while"                 return make_token(TOKEN_WHILE);
 "proc"                  return make_token(TOKEN_PROC);
 "typedef"               return make_token(TOKEN_TYPEDEF);
+"true"                  return make_token(TOKEN_TRUE);
+"false"                 return make_token(TOKEN_FALSE);
 [a-z][a-zA-Z0-9_]*      return make_token(TOKEN_IDENT);
 [A-Z][a-zA-Z0-9_]*      return make_token(TOKEN_TYPE);
 [0-9]+\.[0-9]*          return make_token(TOKEN_REAL);

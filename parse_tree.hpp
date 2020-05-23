@@ -95,7 +95,7 @@ struct Statement {
 };
 
 extern std::map<std::string, Declaration> variable_definitions;
-extern std::map<std::string, Procedure>  procedure_definitions;
+extern std::map<std::string, std::vector<Procedure>>  procedure_definitions;
 
 
 // provide equality operator to make parse tree types regular
@@ -115,10 +115,15 @@ bool operator==(const Procedure   & lhs, const Procedure   & rhs);
 bool operator==(const Return      & lhs, const Return      & rhs);
 bool operator==(const Typedef     & lhs, const Typedef     & rhs);
 bool operator==(const Statement   & lhs, const Statement   & rhs);
+
+bool operator!=(const Type        & lhs, const Type        & rhs);
  
 // ordering for std::map
 bool operator<(const Type        & lhs, const Type        & rhs);
 bool operator<(const Declaration & lhs, const Declaration & rhs);
 bool operator<(const Variable    & lhs, const Variable    & rhs);
+
+// convert type to string for name decoration for function overloading
+std::string to_string(const Type& t);
 
 #endif

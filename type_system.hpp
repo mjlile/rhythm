@@ -63,9 +63,9 @@ bool is_signed_integral  (const Type& t);
 bool is_unsigned_integral(const Type& t);
 bool is_integral         (const Type& t);
 bool is_floating_point   (const Type& t);
+bool is_pointer          (const Type& t);
 bool is_array            (const Type& t);
 bool is_structure        (const Type& t);
-bool is_pointer          (const Type& t);
 bool is_aggregate        (const Type& t);
 
 

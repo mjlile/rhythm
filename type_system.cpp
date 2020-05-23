@@ -67,6 +67,13 @@ Type type_of(const Variable& var) {
 }
 
 Type type_of(const Invocation& invoc) {
+
+    // TODO: improve modularity
+    // c functions
+    if (invoc.name == "printf" || invoc.name == "scanf") {
+        return TypeSystem::Intrinsics::integer;
+    }
+
     // TODO: use input types for overloading
     std::vector<Type> input_types(invoc.args.size());
     std::transform(invoc.args.begin(), invoc.args.end(),
@@ -84,7 +91,28 @@ Type type_of(const Invocation& invoc) {
         return Intrinsics::void0;
     }
     assert(it != procedure_definitions.end());
-    return it->second.return_type;
+    assert(!it->second.empty());
+
+    const Type* return_type_ptr = nullptr;
+    for (const auto& proc : it->second) {
+        if (proc.parameters.size() != input_types.size()) {
+            continue;
+        }
+        for (size_t i = 0; i < input_types.size(); ++i) {
+            if (input_types[i] != proc.parameters[i].type) {
+                goto next;
+            }
+        }
+        return_type_ptr = &proc.return_type;
+        break;
+    next:
+    ;
+    }
+    if (!return_type_ptr) {
+        std::cerr << "could not find matching overload for `" << invoc.name << "`" << std::endl;
+        return Intrinsics::void0;
+    }
+    return *return_type_ptr;
 }
 
 Type type_of(const TypeCast& cast) {

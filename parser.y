@@ -70,7 +70,7 @@
 %token <token> TOKEN_COLON TOKEN_BANG TOKEN_PLUS TOKEN_MINUS TOKEN_STAR TOKEN_SLASH TOKEN_PERCENT
 /* keywords */
 %token <token> TOKEN_RETURN TOKEN_IF TOKEN_WHILE TOKEN_DO TOKEN_TYPEDEF
-%token <token> TOKEN_PROC TOKEN_IMPORT TOKEN_LET
+%token <token> TOKEN_PROC TOKEN_IMPORT TOKEN_LET TOKEN_TRUE TOKEN_FALSE
 
 %type <type> type
 %type <type_param_list> type_param_list
@@ -218,7 +218,7 @@ while_stmt      : TOKEN_WHILE expression TOKEN_LBRACE block TOKEN_RBRACE
 procedure       : TOKEN_PROC TOKEN_IDENT parameters type TOKEN_LBRACE block TOKEN_RBRACE
                     {
                         $$ = new Procedure{*$2, *$3, *$4, *$6};
-                        procedure_definitions[*$2] = *$$;
+                        procedure_definitions[*$2].emplace_back(*$$);
                         delete $2;
                         delete $3;
                         delete $4;
@@ -228,7 +228,7 @@ procedure       : TOKEN_PROC TOKEN_IDENT parameters type TOKEN_LBRACE block TOKE
                     {
                         // void procedure
                         $$ = new Procedure{*$2, *$3, TypeSystem::Intrinsics::void0, *$5};
-                        procedure_definitions[*$2] = *$$;
+                        procedure_definitions[*$2].emplace_back(*$$);
                         delete $2;
                         delete $3;
                         delete $5;
