@@ -155,7 +155,7 @@ expr_list       : expression
 
 invocation      : TOKEN_IDENT TOKEN_LPAREN expr_list TOKEN_RPAREN
                     {
-                        $$ = new Invocation{*$1, {*$3}};
+                        $$ = new Invocation{*$1, std::move(*$3)};
                         delete $1;
                         delete $3;
                     }
@@ -209,7 +209,7 @@ conditional     : TOKEN_IF expression TOKEN_LBRACE block TOKEN_RBRACE
 
 while_stmt      : TOKEN_WHILE expression TOKEN_LBRACE block TOKEN_RBRACE
                     {
-                        $$ = new WhileLoop{*$2, *$4};
+                        $$ = new WhileLoop{*$2, std::move(*$4)};
                         delete $2;
                         delete $4;
                     }
@@ -217,7 +217,7 @@ while_stmt      : TOKEN_WHILE expression TOKEN_LBRACE block TOKEN_RBRACE
 
 procedure       : TOKEN_PROC TOKEN_IDENT parameters type TOKEN_LBRACE block TOKEN_RBRACE
                     {
-                        $$ = new Procedure{*$2, *$3, *$4, *$6};
+                        $$ = new Procedure{*$2, std::move(*$3), *$4, std::move(*$6)};
                         procedure_definitions[*$2].emplace_back(*$$);
                         delete $2;
                         delete $3;
@@ -227,7 +227,7 @@ procedure       : TOKEN_PROC TOKEN_IDENT parameters type TOKEN_LBRACE block TOKE
                 | TOKEN_PROC TOKEN_IDENT parameters TOKEN_LBRACE block TOKEN_RBRACE
                     {
                         // void procedure
-                        $$ = new Procedure{*$2, *$3, TypeSystem::Intrinsics::void0, *$5};
+                        $$ = new Procedure{*$2, std::move(*$3), TypeSystem::Intrinsics::void0, std::move(*$5)};
                         procedure_definitions[*$2].emplace_back(*$$);
                         delete $2;
                         delete $3;
@@ -359,7 +359,7 @@ type            : TOKEN_TYPE {
                     delete $1; 
                 }
                 | TOKEN_TYPE TOKEN_LPAREN type_param_list TOKEN_RPAREN {
-                    $$ = new Type{*$1, *$3};
+                    $$ = new Type{*$1, std::move(*$3)};
                     delete $1;
                     delete $3;
                 }
