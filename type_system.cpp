@@ -77,6 +77,10 @@ Type type_of(const Invocation& invoc) {
         assert(invoc.args.size() == 1);
         return TypeSystem::value_type(TypeSystem::type_of(invoc.args[0]));
     }
+    if (invoc.name == "address") {
+        assert(invoc.args.size() == 1);
+        return TypeSystem::Intrinsics::make_pointer(TypeSystem::type_of(invoc.args[0]));
+    }
     if (invoc.name == "begin" || invoc.name == "limit") {
         assert(invoc.args.size() == 1);
         return TypeSystem::Intrinsics::make_pointer(TypeSystem::value_type(TypeSystem::type_of(invoc.args[0])));

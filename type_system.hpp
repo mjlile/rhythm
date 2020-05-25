@@ -38,7 +38,7 @@ extern const std::string structure;
 
 Type make_pointer  (const Type& value_type);
 Type make_array    (const Type& value_type, size_t sz);
-Type make_structure(const std::vector<Declaration> fields);
+Type make_structure(const std::vector<Declaration>& fields);
 
 } // Intrinsics
 
@@ -70,7 +70,6 @@ bool is_pointer          (const Type& t);
 bool is_array            (const Type& t);
 bool is_structure        (const Type& t);
 bool is_aggregate        (const Type& t);
-
 
 } // TypeSystem
 
