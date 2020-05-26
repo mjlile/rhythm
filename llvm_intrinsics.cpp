@@ -39,7 +39,10 @@ llvm::Value* intrinsic_op(const Invocation& invoc, llvm::IRBuilder<>& builder, l
     assert(invoc.args.size() == 2);
     using namespace TypeSystem;
     if (invoc.name == "+") {
-        if (is_integral(type_of(invoc))) {
+        if (is_pointer(type_of(invoc.args.front())) && is_integral(type_of(invoc.args.back()))) {
+            return builder.CreateGEP(lhs, rhs);
+        }
+        else if (is_integral(type_of(invoc))) {
             return builder.CreateAdd(lhs, rhs);
         }
         else if (is_floating_point(type_of(invoc))) {
@@ -50,7 +53,15 @@ llvm::Value* intrinsic_op(const Invocation& invoc, llvm::IRBuilder<>& builder, l
         }
     }
     else if (invoc.name == "-") {
-        if (is_integral(type_of(invoc))) {
+        if (is_pointer(type_of(invoc.args.front()))) {
+            if (is_integral(type_of(invoc.args.back()))) {
+                return builder.CreateGEP(lhs, builder.CreateNeg(rhs));
+            }
+            else if (is_pointer(type_of(invoc.args.back()))) {
+                return builder.CreatePtrDiff(lhs, rhs);
+            }
+        }
+        else if (is_integral(type_of(invoc))) {
             return builder.CreateSub(lhs, rhs);
         }
         else if (is_floating_point(type_of(invoc))) {
