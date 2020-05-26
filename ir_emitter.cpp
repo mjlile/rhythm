@@ -603,14 +603,14 @@ bool emit_stmt(const Procedure& proc) {
                        return llvm_type(t.type);
                    });
     if (std::find(param_types.begin(), param_types.end(), nullptr) != param_types.end()) {
-        return error("bas parameter type");
+        return error("bad parameter type");
     }
     
     llvm::Type* ret_type = llvm_type(proc.return_type);
     if (!ret_type) {
         return error("bad return type");
     }
-    llvm::FunctionType* ft = llvm::FunctionType::get(ret_type, param_types, false);
+    llvm::FunctionType* ft = llvm::FunctionType::get(ret_type, param_types, /*isVarArg=*/false);
 
     llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, decorate_name(proc), module.get());	
 

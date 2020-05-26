@@ -73,6 +73,7 @@ Type type_of(const Invocation& invoc) {
     if (invoc.name == "printf" || invoc.name == "scanf") {
         return TypeSystem::Intrinsics::integer;
     }
+    // other intrinsic functions
     if (invoc.name == "deref") {
         assert(invoc.args.size() == 1);
         return TypeSystem::value_type(TypeSystem::type_of(invoc.args[0]));
